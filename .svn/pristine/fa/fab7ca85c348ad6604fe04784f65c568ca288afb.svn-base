@@ -1,0 +1,43 @@
+package com.acneuro.test.automation.upgrade_downgrade_tests;
+
+import org.testng.Reporter;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.libraries.ConfigLib;
+import com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific;
+
+/*
+ * @Author: Sijimon James
+ * @Test: UK customer account creation, order a price plan and subscription activation
+ */
+
+public class TC_01_Change_Maintenance_Order_Joi_Flex_UK extends ConfigLib {
+
+	private static String orderId = "";
+	private static String orderNumber = "";
+	private static String newEmailId = "unknown";
+	private static String customerNumber = "unknown";
+
+	@Test
+	public void maintenance_Order_change()  {
+
+		
+		
+	}
+
+	private void findActiveCustomerWithMaintenanceOrder() {
+
+		String cin_product_details = "SELECT * FROM CIN_PRODUCTS WHERE CIN_NUMBER = (SELECT MAX(CIN_NUMBER) FROM CIN_PRODUCTS WHERE PRODUCT = 'UKMV1409MainMOB46' AND STATUS = 'ACT')";
+
+	}
+
+	@AfterMethod
+	private static void postMethodToChangeEmail() {
+		// change the email id back to normal
+		MVNOProjectSpecific.updateEmailIdInCust_customersTable(newEmailId, customerNumber);
+		System.out.println(String.format("Email Adress is changed to original: %s", newEmailId));
+		Reporter.log("Email Adress of the Customer: " + newEmailId);
+
+	}
+}

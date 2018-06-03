@@ -1,0 +1,60 @@
+package com.acneuro.test.automation.uk_workflow_tests;
+
+import java.sql.ResultSet;
+
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.libraries.OracleJdbcConnection;
+import com.acneuro.test.automation.libraries.QueryUtils;
+
+public class Testcase1 {
+
+	@Test
+	public static void ukPortInWithPacCode() {
+
+		String customerNumber = "";
+		String customerId = "";
+		String orderNumber = "";
+		String orderStatus = "";
+
+		try {
+
+			// Verification of PortIn success
+			ResultSet queryCustomerNumber = OracleJdbcConnection
+					.crmDatabaseSelectQuery(QueryUtils.queryMaxCustomerNumberUKCustomer());
+			while (queryCustomerNumber.next()) {
+				customerNumber = queryCustomerNumber.getString("MAX_CUSTOMER_NUMBER");
+				System.out.println("Customer Number: " + customerNumber);
+			}
+
+			ResultSet queryCustomerId = OracleJdbcConnection
+					.crmDatabaseSelectQuery(QueryUtils.queryCustomerIdUKCustomer(customerNumber));
+			while (queryCustomerId.next()) {
+				customerId = queryCustomerId.getString("ID");
+				System.out.println("Customer ID:" + customerId);
+			}
+
+			ResultSet queryLatestOrderNumber = OracleJdbcConnection
+					.crmDatabaseSelectQuery(QueryUtils.queryLatestOrderNumberForUKPortIN(customerId));
+			while (queryLatestOrderNumber.next()) {
+				orderNumber = queryLatestOrderNumber.getString("MAX(ORD_NUMBER)");
+				System.out.println("Portin OrderNumber: "  + orderNumber);
+			}
+			
+			ResultSet queryOrderStatus = OracleJdbcConnection
+					.crmDatabaseSelectQuery(QueryUtils.queryOrderDetails(orderNumber));
+			while (queryOrderStatus.next()) {
+				orderStatus = queryOrderStatus.getString("STATUS");
+				System.out.println("Portin Order Status: "  + orderStatus);
+				Assert.assertEquals(orderStatus, "COMPLETED");
+			}
+			
+			
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+}

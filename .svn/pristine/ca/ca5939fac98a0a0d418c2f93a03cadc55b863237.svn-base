@@ -1,0 +1,87 @@
+package com.acneuro.test.automation.db_connection_libraries;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+/**
+ * @author sijimon james
+ *
+ */
+
+public class OracleJdbcConnection {
+	
+	public static ResultSet crmDatabaseSelectQuery(String Select_query) {
+		Connection con = null;
+		ResultSet rs = null;
+		Statement stmt = null;
+		try {
+			con = DBUtils.getConnection(DBconnections.CUES);
+			stmt = con.createStatement();
+			rs = stmt.executeQuery(Select_query);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return rs;
+	}
+	
+	public static ResultSet wildbillDatabaseSelectQuery(String Select_query) {
+		Connection con = null;
+		ResultSet rs = null;
+		Statement stmt = null;
+		try {
+			con = DBUtils.getConnection(DBconnections.WILDBILL);
+			stmt = con.createStatement();
+			rs = stmt.executeQuery(Select_query);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return rs;
+	}
+
+	public static ResultSet numposDatabaseSelectQuery(String selectQuery) {
+		ResultSet rs = null;
+		Connection con = null;
+		Statement stmt = null;
+
+		try {
+
+			con = DBUtils.getConnection(DBconnections.NUMPOS);
+			stmt = con.createStatement();
+			rs = stmt.executeQuery(selectQuery);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return rs;
+	}
+
+	public static void crmDatabaseUpdateQuery(String Update_Query) {
+
+		Connection con = null;
+		Statement stmt=null;
+		try {
+			con = DBUtils.getConnection(DBconnections.CUES);
+
+			stmt = con.createStatement();
+			con.setAutoCommit(false);
+			int rowsUpdated = stmt.executeUpdate(Update_Query);
+			con.commit();
+
+			System.out.println("update query is performed and committed [rowsUpdated:" + rowsUpdated + "]");
+			
+		} catch (SQLException e) {
+			if (con != null) {
+				System.err.print("TRANSACTION IS BEING ROLLED BACK!!");
+
+				try {
+					con.rollback();
+				} catch (SQLException e1) {
+					e1.printStackTrace();
+				}
+			}
+			
+			e.printStackTrace();
+		}
+	}
+}

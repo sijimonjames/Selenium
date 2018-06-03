@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="mvno">
+	<test name="customer and Order Creation Tests">
+		<packages>
+			<package
+				name="com.acneuro.test.automation._03_FR_French_price_plans" />
+		</packages>
+	</test>
+	<test name="Retry Listener">
+		<classes>
+			<class name="com.acneuro.test.automation.libraries.RetryListener" />
+		</classes>
+	</test>
+</suite> <!-- Suite -->

@@ -1,0 +1,53 @@
+package com.acneuro.test.automation.cuet_reload_commands_tests;
+
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific;
+
+/*
+ * @Author: Sijimon James
+ * Test: Disconnect MB subscription using Cuet R command - Test will disconnect the oldest active customer
+ */
+
+
+public class TC_02_FR_DisconnectMBSubscription_Cuet_R {
+
+	@Test
+
+	public static void MB_Subscription_Termination_Using_Cuet_R_Command_FR() {
+		String cinProductId = "";
+		String processId = "";
+		// Find out a new active product
+
+		// Need customer number, CIN_PRODUCT id
+		cinProductId = MVNOProjectSpecific.processMBTerminationActionLatest("FR");
+		
+		//Display CIn Product Id
+		System.out.println("CIN Product ID: "+cinProductId);
+		
+
+		// Find Process Id of MBSubscription Termination
+		processId = MVNOProjectSpecific.processIdAsKeyFromCinProductLogsTable(cinProductId);
+
+		// Check for mbTerminateProvisioning job is created
+		boolean checkFormbTerminateProvisioning = MVNOProjectSpecific.checkIfActionExistsWithProcessId(processId,
+				"mbTerminateProvisioning");
+
+		Assert.assertTrue(checkFormbTerminateProvisioning);
+
+		// Provisioning Error removal with Process Id and check For Action is
+		// done
+		MVNOProjectSpecific.processMBTerminationProvisioningAction(processId);
+
+		// Get the current product status
+		System.out.println("Checking the product status.....");
+		
+		String status  = MVNOProjectSpecific.getProductStatus(cinProductId);
+		
+		System.out.println(String.format("The status of the subscription is %s", status));
+		
+
+	}
+
+}

@@ -1,0 +1,14 @@
+/**
+ * 
+ */
+package com.acneuro.test.automation.db_connection_libraries;
+
+/**
+ * @author sijimon james
+ *
+ */
+public enum DBconnections {
+	
+	CUES, NUMPOS, DIMA
+	
+}

@@ -1,0 +1,51 @@
+package com.acneuro.test.automation.xmlParser;
+
+import com.acneuro.test.automation.libraries.ConfigLib;
+
+public class Xml_Parser_for_Legacy_Talkplans extends ConfigLib {
+
+	public static String france_new_mvno_customer_creation(String emailId) {
+		return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" + "<CustomerRequest><Customer>"
+				+ "<Name>ACNEuro France Automation</Name>"
+				+ "<ContactPerson xsi:type=\"ContactPersonVO\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"
+				+ "<FirstName>" + username + "</FirstName>"
+				+ "<MiddleName>MVNO</MiddleName><LastName>France En</LastName>"
+				+ "<PreferredLanguage>EN</PreferredLanguage>" + "<Title>Mrs.</Title>"
+				+ "<DateOfBirth>01011991</DateOfBirth></ContactPerson>" + "<Type>RESIDENTIAL</Type>"
+				+ "<Address xsi:type=\"AddressVO\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"
+				+ "<Attributes/><Country>FR</Country><City>PARIS</City>" + "<PostalCode>75007</PostalCode>"
+				+ "<HouseNumber>38</HouseNumber>" + "<Street>RUE DE BABYLONE</Street>" + "</Address>" + "<Email>"
+				+ emailId + "</Email>" + "<PhoneNumber>0123467890</PhoneNumber><RepId>0</RepId>"
+				+ "<Country>FR</Country>" + "<MainIdentification type=\"NID\">12345678910</MainIdentification>"
+				+ "<Parameters/><Attributes>"
+				+ "<Attribute name=\"creditProfile\">VALID</Attribute></Attributes><Identity>"
+				+ "<IdentityImage>0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAG"
+				+ "AAAAAAAAAAAAAAABAAAAUQAAAAAAAAAAEAAAUwAAAAEAAAD+/</IdentityImage>"
+				+ "<IdentityImageType>application/msword</IdentityImageType>" + "<Valid>false</Valid>" + "</Identity>"
+				+ "<MarketingConsent>false</MarketingConsent><AddressVerified>true</AddressVerified>" + "</Customer>"
+				+ "<User>" + "<Username>" + emailId + "</Username>"
+				+ "<Password>ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae</Password>"
+				+ "<SecretQuestion>asdf?</SecretQuestion>"
+				+ "<SecretQuestionAnswer>asdf!</SecretQuestionAnswer></User></CustomerRequest>";
+	}
+
+	public static String uk_new_mvno_customer_creation(String emailId) {
+		return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" + "<CustomerRequest><Customer>"
+				+ "<Name>" + username + "</Name>"
+				+ "<ContactPerson xsi:type=\"ContactPersonVO\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"
+				+ "<FirstName>kmanisha</FirstName>" + "<MiddleName>MVNO</MiddleName><LastName>Automation</LastName>"
+				+ "<PreferredLanguage>EN</PreferredLanguage>" + "<Title>Mr.</Title><DateOfBirth>31121976</DateOfBirth>"
+				+ "</ContactPerson><Type>RESIDENTIAL</Type>"
+				+ "<Address xsi:type=\"AddressVO\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"
+				+ "<Attributes/><Country>GB</Country>" + "<City>London</City><PostalCode>SW6 5DP</PostalCode>"
+				+ "<HouseNumber>21</HouseNumber>" + "<Street>Lilyville Road</Street></Address>" + "<Email>" + emailId
+				+ "</Email>" + "<PhoneNumber>03900000001</PhoneNumber>" + "<RepId>0</RepId><Country>GB</Country>"
+				+ "<MainIdentification type=\"NID\">12345678910</MainIdentification>" + "<Parameters/><Attributes>"
+				+ "<Attribute name=\"creditProfile\">VALID</Attribute>"
+				+ "</Attributes><MarketingConsent>false</MarketingConsent><AddressVerified>true</AddressVerified>"
+				+ "</Customer><User><Username>" + emailId + "</Username>"
+				+ "<Password>ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae</Password>"
+				+ "<SecretQuestion>asdf?</SecretQuestion>" + "<SecretQuestionAnswer>asdf!</SecretQuestionAnswer>"
+				+ "</User></CustomerRequest>";
+	}
+}

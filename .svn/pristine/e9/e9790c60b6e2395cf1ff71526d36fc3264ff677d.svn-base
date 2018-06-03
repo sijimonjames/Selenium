@@ -1,0 +1,84 @@
+package com.acneuro.test.automation.libraries;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
+
+public class OracleJdbcConnection {
+	// select query
+	public static Connection dbConnection(String oracleDatabase, String userName, String password) {
+		// Loading driver
+		try {
+			Class.forName("oracle.jdbc.driver.OracleDriver");
+		} catch (ClassNotFoundException e) {
+			System.out.println("No jdbc driver found");
+			e.printStackTrace();
+		}
+		//System.out.println("Oracle JDBC Driver Registered");
+		// connection object
+		Connection con = null;
+		// statement object
+		try {
+			con = DriverManager.getConnection(oracleDatabase, userName, password);
+		} catch (Exception e) {
+			System.out.println("Connecion Failed, check the output console");
+			e.printStackTrace();
+		}
+		if (con != null) {
+			System.out.println("You have control on your database now!");
+		} else {
+			System.out.println("Failed to make connection!");
+		}
+		return con;
+	}
+
+	public static ResultSet crmDatabaseSelectQuery(String Select_query) {
+		ResultSet rs = null;
+		Connection con = null;
+		try {
+			con = dbConnection(Constant.oracleCRMDatabase, Constant.crmDatabaseCredentials, Constant.crmDatabaseCredentials);
+			Statement stmt = con.createStatement();
+			rs = stmt.executeQuery(Select_query);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return rs;
+	}
+	
+	public static ResultSet numposDatabaseSelectQuery(String selectQuery) {
+		ResultSet rs = null;
+		Connection con = null;
+		try {
+			con = dbConnection(Constant.oracleNumposDatabase, Constant.numposDatabaseCredentials, Constant.numposDatabaseCredentials);
+			Statement stmt = con.createStatement();
+			rs = stmt.executeQuery(selectQuery);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return rs;
+	}
+
+	public static void crmDatabaseUpdateQuery(String Update_Query) {
+		Connection con = null;
+		try {
+			con = dbConnection(Constant.oracleCRMDatabase, Constant.crmDatabaseCredentials, Constant.crmDatabaseCredentials);
+			Statement stmt = con.createStatement();
+			con.setAutoCommit(false);
+			int rowsUpdated = stmt.executeUpdate(Update_Query);
+			con.commit();
+			System.out.println("update query is performed and committed [rowsUpdated:" + rowsUpdated + "]");
+		} catch (Exception e) {
+			e.printStackTrace();
+			try {
+				if (con != null) {
+					System.err.print("TRANSACTION IS BEING ROLLED BACK!!");
+					con.rollback();
+				}
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
+		}
+	}
+	
+}

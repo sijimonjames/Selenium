@@ -1,0 +1,108 @@
+package com.acneuro.test.automation.SIM_Replacement_Tests.Cuet_R;
+
+import java.sql.ResultSet;
+
+import org.testng.Assert;
+import org.testng.Reporter;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.db_connection_libraries.DBUtils;
+import com.acneuro.test.automation.db_connection_libraries.OracleJdbcConnection;
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.libraries.RestApiAutomation;
+import com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific;
+import com.acneuro.test.automation.mvno_project_library.UKProjectSpecific;
+
+/*
+ * @Author: Sijimon James
+ * Test: Lost sim replacement using Cuet R command
+ */
+
+public class TC_01_FR_SIM_Replacement_Lost_Cuet_R {
+
+	private static String country = "FR";
+	private static String reasonForReplacement = "LOST";
+	private static String SIM_TYPE = "NANO"; // Combi or Nano
+	private static String joiNumber = "To be found";
+	private static String customerNumber = "To be found";
+	private static String cinProductId = "To be found";
+	private static String orderId = "To be found";
+
+	@Test
+	public void simReplacementLostUsingCuetRCommand() {
+
+		// Step 1.1: latest active CIN product, fail if no active cin product
+		// Step 1.2: Customer number for latest cin product
+
+		findLatestActiveCustomerForSIMReplacement();
+
+		// Get the Order id and check the different processes and process ID
+		ApiRequestToReplaceSim();
+		Reporter.log(reasonForReplacement + " SIM Replacement Order ID: " + orderId, true);
+
+		UKProjectSpecific.simReplacementSuspensionOfProvisioningUsertaskFix(orderId);
+		// Shipping of New SIM with a different ICC ID
+		boolean shipWaitIsProcessed = UKProjectSpecific.processShipWait(orderId, "simReplacementShipWait");
+		// Test is failed if shipping is not processed
+		Assert.assertTrue(shipWaitIsProcessed);
+		// Login and Activation of SIM
+
+		boolean simActivationAction = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId,
+				"simReplacementActivation");
+		Assert.assertTrue(simActivationAction);
+
+		String requestActivateSim = RestApiAutomation.requestToActivateSubscriptionForSIMReplacement(joiNumber,
+				cinProductId, Constant.ICCID_2_FR);
+		System.out.println(requestActivateSim);
+		RestApiAutomation.httpPostTest(Constant.CIN_EXECUTE, requestActivateSim);
+
+		// UKProjectSpecific.LoginToUKMyJoiWithMsisdn(joiNumber);
+		// UKProjectSpecific.activationOfSIMReplacement(reasonForReplacement);
+		// fixing all user tasks
+		UKProjectSpecific.simReplacementActivationByProvisioningUsertaskFix(orderId, reasonForReplacement);
+		// Check for action "simReplacementFinish" is "SUCCESS"
+		boolean simOrderIsDone = UKProjectSpecific.checkForSimReplacementOrderIsDone(orderId);
+		Assert.assertTrue(simOrderIsDone);
+		// Verify CIN_PRODUCT with order id, should be Active
+		boolean verifyProductIsActive = UKProjectSpecific.verifyCinProductIsActive(orderId);
+		Assert.assertTrue(verifyProductIsActive);
+
+		Reporter.getOutput();
+	}
+
+	public static void findLatestActiveCustomerForSIMReplacement() {
+
+		try {
+
+			String queryCinProduct = DBUtils.queryCinProductsWithMaxCinProductNumber(country);
+
+			ResultSet cinProductTable = OracleJdbcConnection.crmDatabaseSelectQuery(queryCinProduct);
+			while (cinProductTable.next()) {
+				joiNumber = cinProductTable.getString("ATTRIBUTE1");
+				System.out.println("Joi Number: " + joiNumber);
+				cinProductId = cinProductTable.getString("ID");
+				customerNumber = cinProductTable.getString("CUSTOMER_NUMBER");
+				Reporter.log("Customer Number: " + customerNumber);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	public static void ApiRequestToReplaceSim() {
+
+		String requestSimReplace = RestApiAutomation.requestToReplaceSIM(joiNumber, reasonForReplacement, SIM_TYPE,
+				country, cinProductId);
+		System.out.println();
+		RestApiAutomation.httpPostTest(Constant.CIN_EXECUTE, requestSimReplace);
+		try {
+			Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		orderId = UKProjectSpecific.simReplacementOrderdetails(joiNumber);
+
+	}
+
+}

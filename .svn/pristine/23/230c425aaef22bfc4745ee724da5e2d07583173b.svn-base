@@ -1,0 +1,50 @@
+package com.acneuro.test.automation.direct_debit_And_Dunning_Tests;
+
+import org.testng.annotations.Test;
+
+/*
+ * @Author: Sijimon James
+ * Test: FRMVNO-37:Direct Debit Activation for FR
+ */
+public class DirectDebitActivationForFranceAccount {
+	// private static String country = "FR";
+	private static String customerNumber = "unknown";
+	private static String ocxFileName = "unknown";
+
+	@Test
+	public void France_DD_Activation() {
+
+		// Create a new customer or
+		// Find a customer with Payment method CC active and DD pending
+		System.out.println("Cusotmer found with CC active and DD pending");
+		System.out.println("Customer Number is: " + customerNumber);
+
+		// Create a CSV file with
+		// --OCX_001_581953_CUST_<<yyyymmddhhmmss>>_25150845.csv
+		// with selected customer number and current date in it.
+		System.out.println("A csv file is created with name: " + ocxFileName);
+
+		// Send the file to
+		// ams1-uatjob-02
+		// /opt/applications/sepa-mandate-update-disemp/test/input
+		System.out.println("File sending starts....");
+
+		System.err.println(String.format("File %s is sent successfully", ocxFileName));
+
+		// Go to;
+		// http://ams1-uatjob-02:8080/sepa-mandate-update-disemp-web/?1
+		// Run the worker 'test FR UMR'
+		System.out.println("Opening the worker....");
+		System.out.println("The worker is triggered");
+
+		// check for DD - should be active now.
+		// Fail the test if not
+
+		// Wild bill, should be active BS_PAYMENTS
+		System.out.println("DD is active in wild bill");
+		// May not be active in Cues, if not run DHC
+		System.out.println("DD is active in Cues");
+		// Test is success if DD is active is cues
+		System.out.println("France DD Activation test is successfully completed");
+	}
+}

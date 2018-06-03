@@ -1,0 +1,60 @@
+package com.acneuro.test.automation.uk_workflow_tests;
+
+import org.junit.Assert;
+import org.testng.Reporter;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.libraries.ConfigLib;
+import com.acneuro.test.automation.libraries.UKProjectSpecific;
+
+public class TC_7_UK_SIM_Replacement_Stolen extends ConfigLib {
+
+	@Test
+	public void simReplacementStolen() {
+		String reasonForReplacement = "STOLEN";
+		String joiNumber = "";
+		String orderID = "";
+		// Step 1.1: latest active CIN product, fail if no active cin product
+		// Step 1.2: Customer number for latest cin product
+		// Step 1.3: customer login details found from customer number
+		// Step 1.4: Login to myjoi with above login details
+		joiNumber = UKProjectSpecific.LoginToUKMyJoiWithActiveSubscription();
+		System.out.println("Joi Number: " + joiNumber);
+		// Step 5: My Subscriptions > find the same active subscription > My
+		// Settings
+		UKProjectSpecific.ukManageSettingsFromSubscriptions(joiNumber);
+		// Step 7: My settings > 'Replace Sim'> Lost Sim > check simType >
+		// Submit, verify the submit message
+		UKProjectSpecific.selectAndSubmitReplaceSimFromMySettings(reasonForReplacement);
+		driver.quit();
+		// get order id
+		orderID = UKProjectSpecific.simReplacementOrderdetails(joiNumber);
+
+		Reporter.log(reasonForReplacement + " SIM Replacement Order ID: " + orderID, true);
+
+		UKProjectSpecific.simReplacementSuspensionOfProvisioningUsertaskFix(orderID);
+		// check for - simReplacementPoliceReportUserTask
+		UKProjectSpecific.simReplacementPoliceVerificationReportUsertaskFix(orderID);
+		// Ship waiting process
+		boolean shipWaitIsProcessed = UKProjectSpecific.processShipWait(orderID, "simReplacementShipWait");
+		// Test is failed if shipping is not processed
+		Assert.assertTrue(shipWaitIsProcessed);
+		// Login and Activation of SIM
+		boolean simActivationAction = UKProjectSpecific.checkIfActionExistsForOrder(orderID, "simReplacementActivation");
+		Assert.assertTrue(simActivationAction);
+		UKProjectSpecific.LoginToUKMyJoiWithMsisdn(joiNumber);
+		UKProjectSpecific.activationOfSIMReplacement(reasonForReplacement);
+		// Usertasks fix
+		UKProjectSpecific.simReplacementActivationByProvisioningUsertaskFix(orderID, reasonForReplacement);
+		// Check for action "simReplacementFinish" is "SUCCESS"
+		boolean simOrderIsDone = UKProjectSpecific.checkForSimReplacementOrderIsDone(orderID);
+		Assert.assertTrue(simOrderIsDone);
+		// Verify CIN_PRODUCT with order id, should be Active
+		boolean verifyProductIsActive = UKProjectSpecific.verifyCinProductIsActive(orderID);
+		Assert.assertTrue(verifyProductIsActive);
+		
+		Reporter.getOutput();
+
+	}
+
+}

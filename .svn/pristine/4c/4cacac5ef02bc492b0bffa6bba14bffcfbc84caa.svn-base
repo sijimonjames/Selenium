@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="Suite">
+	<test name="customer Creation and Activation">
+		<classes>
+		
+			<class
+				name="com.acneuro.test.automation.uk_workflow_tests.TC_1_UKCustomerActivation" />
+				
+			
+			<class
+				name="com.acneuro.test.automation.uk_workflow_tests.TC_2_UKAddNewOrderToExistingCustomer" />
+			
+			<class
+				name="com.acneuro.test.automation.uk_workflow_tests.TC_3_UKCancellationOfOrder" />
+			
+			<class
+				name="com.acneuro.test.automation.france_workflow_tests.TC_1_FranceEnglishCustomerActivation" />
+			
+			<class
+				name="com.acneuro.test.automation.france_workflow_tests.TC_2_FranceEnglishCustomerActivationWithPortIn" />
+			
+			<class
+				name="com.acneuro.test.automation.france_workflow_tests.TC_3_FranceCancellationOfOrder" />
+			
+			
+			
+			
+		</classes>
+	
+	</test> <!-- Test -->
+</suite> <!-- Suite -->

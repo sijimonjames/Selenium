@@ -1,0 +1,135 @@
+package com.acneuro.test.automation.portingTests;
+
+import java.sql.SQLException;
+import org.testng.Assert;
+import org.testng.Reporter;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.libraries.ConfigLib;
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.mvno_project_library.FranceProjectSpecific;
+import com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific;
+
+public class TC_01_FranceEnglishCustomerActivationWithPortIn extends ConfigLib {
+
+	private static String newEmailId = "unknown";
+	private static String customerNumber = "unknown";
+	private static String directory = ".//Screenshots/Portin/";
+
+	public String accountCreation() {
+		// get the URL of France English website
+		FranceProjectSpecific.FranceEnglishUrlSelection();
+		// Step 1: verify the home page title
+		MVNOProjectSpecific.verifyTitleOfPage("JOi Telecom");
+		// Step 2: Click on Order button
+		MVNOProjectSpecific.orderCreationPageInEnglish();
+		// step 3:check the radio button 'Joi Liberty' ----PRICE PLAN SELECTION
+		MVNOProjectSpecific.pricePlanSelection("joiLibertyFR");
+		FranceProjectSpecific.combiSimTypeSelectionForLiberty();
+		// step 4: Click on 'Add To Basket' on same page,
+		FranceProjectSpecific.ourOfferPageAddToBasketButton();
+		// step 5: Click on 'Add To Basket' with Number porting
+		FranceProjectSpecific.addToBasketWithPortin();
+		MVNOProjectSpecific.takeScreenShot(String.format("%s//portin_order_creation_page.png", directory));
+		// Step 6: click on "check out / Continue for Fr"
+		FranceProjectSpecific.checkOutOrder();
+		newEmailId = FranceProjectSpecific.FranceCustomerAccountCreation();
+
+		FranceProjectSpecific.customerDetails("MVNO", "France Automation", "01011995", "0467890123");
+		FranceProjectSpecific.uploadCustomerIdCopyForFrenchEnglish();
+		FranceProjectSpecific.contactAndBillingAdress("75007", "38");
+		
+		MVNOProjectSpecific.verifyTitleOfPage("JOi Account Created");
+		// Get the customer number
+		customerNumber = MVNOProjectSpecific.queryLatestCustomerNumber("FR");
+		FranceProjectSpecific.continueButtonAfterAccountCreation();
+		MVNOProjectSpecific.verifyTitleOfPage("Order");
+		// Portin details
+		FranceProjectSpecific.continueToStep3WithPortin();
+
+		// UK-Bank Account details
+		FranceProjectSpecific.franceBankDetailsAndClickToContinue(Constant.FrIbanNumber, Constant.FrSwiftCode);
+
+		MVNOProjectSpecific.orderSummaryPageForNewCustomer("999999");
+
+		// temporarily update Email ID
+		MVNOProjectSpecific.updateEmailIdInCust_customersTable(Constant.PERSONAL_EMAIL_ADRRESS, customerNumber);
+
+		FranceProjectSpecific.Payment_Datacash(Constant.Card_Type1, Constant.Type1_CC_number, "2018",
+				Constant.Type1_CC_CVV);
+
+		MVNOProjectSpecific.verifyTitleOfPage("Your JOi Order Confirmation");
+
+		MVNOProjectSpecific.takeScreenShot(String.format("%s//portin_order_Details.png", directory));
+
+		String getOrderNumber = MVNOProjectSpecific.getAndVerifyText("//div/article/section/p[2]/strong");
+		String orderNumber = getOrderNumber.substring(1);
+		driver.quit();
+		Reporter.log("Order is created successfully. France Order number is: " + orderNumber, true);
+		return orderNumber;
+	}
+
+	@Test
+	public void customerActivationWithPortIN() throws SQLException {
+
+		// Pre-requisite: Create a new account
+		String orderNumber = accountCreation();
+
+		String orderId = "";
+
+		/*
+		 * Fail the test if Order is in any other status other than resolving
+		 * tasks
+		 */
+
+		// verify for resolving tasks
+		Assert.assertTrue(MVNOProjectSpecific.CheckStatusOfOrder(orderNumber));
+
+		// RESOLVING_TASKS API signal
+		orderId = MVNOProjectSpecific.processResolvingTasksSignal(orderNumber);
+
+		// here we check if upfront payment action created
+		boolean checkActionUpfrontPayment = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId,
+				"ofUpfrontPaymentWait");
+		Assert.assertTrue(checkActionUpfrontPayment);
+
+		// here we check if upfront payment is finished successfully
+		boolean upfrontPaymentActionIsDone = MVNOProjectSpecific.processUpfrontPayment_Jackal(orderId);
+		Assert.assertTrue(upfrontPaymentActionIsDone);
+
+		// Eligibility check waiting
+		Assert.assertTrue(FranceProjectSpecific.processNumposForFrancePortIn(orderId));
+		Assert.assertTrue(FranceProjectSpecific.processEligibilityCheckWaiting(orderId));
+
+		// here we check if shipping signal action is created
+		boolean checkActionmbShipWaiting = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId, "mbShipWaiting");
+		Assert.assertTrue(checkActionmbShipWaiting);
+
+		// here we check if upfront payment is finished successfully
+		boolean mbShipWaitingIsDone = FranceProjectSpecific.processShipWait(orderId, "mbShipWaiting");
+		Assert.assertTrue(mbShipWaitingIsDone);
+
+		// here we check if 'mbNumPosWaiting' action is created
+		Assert.assertTrue(MVNOProjectSpecific.checkIfActionExistsForOrder(orderId, "mbNumPosWaiting"));
+
+		// Process 'mbNumPosWaiting' action
+		Assert.assertTrue(FranceProjectSpecific.processNumposWaiting(orderId));
+
+		// Provisioning start changing to Now
+		Assert.assertTrue(MVNOProjectSpecific.checkIfActionExistsForOrder(orderId, "mbProvisionStart"));
+
+		Assert.assertTrue(FranceProjectSpecific.numposProvisioningStartToNow(orderId));
+
+		Assert.assertTrue(MVNOProjectSpecific.checkIfActionExistsForOrder(orderId, "mbProvisionWait"));
+
+		FranceProjectSpecific.provisioningCheckForFrance(orderId);
+	}
+
+	@AfterMethod
+	private static void postMethodToChangeEmail() {
+		// change the email id back to normal
+		MVNOProjectSpecific.updateEmailIdInCust_customersTable(newEmailId, customerNumber);
+		System.out.println(String.format("Email Adress is changed to original: %s", newEmailId));
+	}
+}

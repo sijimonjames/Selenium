@@ -1,0 +1,191 @@
+package com.acneuro.test.automation.direct_debit_And_Dunning_Tests;
+
+import java.io.File;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+import org.testng.Assert;
+import org.testng.Reporter;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.db_connection_libraries.DBUtils;
+import com.acneuro.test.automation.db_connection_libraries.OracleJdbcConnection;
+import com.acneuro.test.automation.fileslibrary.FileTransferLibrary;
+import com.acneuro.test.automation.fileslibrary.FileUtilsLibrary;
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.mvno_project_library.FranceProjectSpecific;
+
+/*
+ * @Author: Sijimon James
+ * Test: FRMVNO-37:Direct Debit Activation for FR
+ */
+public class TC_01_DirectDebitActivationForFranceAccount {
+	private static String country = "FR";
+	private static String customerNumber = "unknown";
+	private static String customerId = "unknown";
+	private static String ocxFileName = null;
+	private static String remoteDirectory = "/opt/applications/sepa-mandate-update-disemp/test/input/";
+
+	@Test
+	public void France_DD_Activation() {
+
+		try {
+			Reporter.log("TestLink Test: FRMVNO-37:Direct Debit Activation for FR");
+			System.out.println("TestLink Test: FRMVNO-37:Direct Debit Activation for FR");
+
+			// Create a new customer or
+			// Find a customer with Payment method CC active and DD pending
+
+			latestCustomerNumberFromCuesWithDirectDebitPending();
+
+			// Create a CSV file with
+			// --OCX_001_581953_CUST_<<yyyymmddhhmmss>>_25150845.csv
+			// with selected customer number and current date in it.
+
+			File myOCXfile = FileUtilsLibrary.csvFileForDirectDebitActivation(customerNumber, country);
+
+			String myFileWithDirectory = "file:/" + myOCXfile.getAbsolutePath();
+			ocxFileName = myFileWithDirectory.replace("\\", "/");
+
+			System.out.println("A csv file is created with name: " + ocxFileName);
+
+			// Send the file to remote location ams1-uatjob-02
+			// /opt/applications/sepa-mandate-update-disemp/test/input
+			System.out.println(String.format("File sending starts to remote machine %s directory %s",
+					Constant.DD_HOSTNAME, remoteDirectory));
+			System.out.println(remoteDirectory);
+			FileTransferLibrary.sftp(Constant.DD_HOSTNAME, remoteDirectory, ocxFileName);
+			Thread.sleep(5000);
+			System.err.println("File is sent successfully");
+			// Go to;
+			// http://ams1-uatjob-02:8080/sepa-mandate-update-disemp-web/?1
+			// Run the worker 'test FR UMR'
+			System.out.println("Opening the worker....");
+			FranceProjectSpecific.runWorkerForDDActivation();
+			System.out.println("The worker is triggered");
+
+			// check for DD - should be active now.
+			// Fail the test if not
+
+			// Wild bill, should be active BS_PAYMENTS
+			Assert.assertTrue(verifyDirectDebitActivatedInWildBill());
+			System.out.println("DD is active in wild bill");
+			// May not be active in Cues, if not run DHC
+			Assert.assertTrue(verifyDirectDebitActivatedInCues());
+			System.out.println("DD is active in Cues");
+			// Test is success if DD is active is cues
+			System.out.println("France DD Activation test is successfully completed");
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void latestCustomerNumberFromCuesWithDirectDebitPending() {
+
+		try {
+			String queryCustID = DBUtils.queryCustomerIdWithDirectDebitPendingForFrance();
+			ResultSet getCustId = OracleJdbcConnection.crmDatabaseSelectQuery(queryCustID);
+
+			while (getCustId.next()) {
+
+				customerId = getCustId.getString("CUST_ID");
+			}
+
+			String queryCustomerNumber = DBUtils.queryCinProductsWithCustId(customerId);
+			ResultSet getCustomerNumber = OracleJdbcConnection.crmDatabaseSelectQuery(queryCustomerNumber);
+
+			while (getCustomerNumber.next()) {
+
+				customerNumber = getCustomerNumber.getString("CUSTOMER_NUMBER");
+				if (getCustomerNumber.wasNull()) {
+
+					System.err.println("No active customer found with DD pending, Activate a new customer");
+					throw new AssertionError();
+				}
+			}
+			System.out.println("Cusotmer found with CC active and DD pending");
+			System.out.println("Customer ID is: " + customerId);
+			System.out.println("Customer Number is: " + customerNumber);
+			Reporter.log("Customer Number: " + customerNumber);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static boolean verifyDirectDebitActivatedInWildBill() {
+
+		try {
+
+			// verify DD is active in Wildbill
+			String queryWildbillDirectDebitStatus = queryToVerifyDDisActiveInWildBill(customerNumber);
+			ResultSet getDirectDebitStatus = OracleJdbcConnection
+					.wildbillDatabaseSelectQuery(queryWildbillDirectDebitStatus);
+
+			while (getDirectDebitStatus.next()) {
+				String paymentMethod = getDirectDebitStatus.getString("PAY_METHOD");
+				String status = getDirectDebitStatus.getString("STATUS");
+
+				if (paymentMethod.equalsIgnoreCase("DIRECT_DEBIT") && status.equalsIgnoreCase("ACTIVE")) {
+					System.out.println("The DDs status is wildbill is ACTIVE");
+					return true;
+				} else {
+					System.err.println("The Status of DD in Wild bill is not as expected, the status is " + status);
+					return false;
+				}
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public static boolean verifyDirectDebitActivatedInCues() {
+
+		String ddStatus = "";
+		String ccStatus = "";
+		try {
+
+			// verify DD is active in Wildbill
+			String queryCuesDirectDebitStatus = queryToVerifyDDisActiveInCues(customerId);
+			String queryCuesCreditCardStatus = queryToVerifyCCisInactiveInCues(customerId);
+			ResultSet getDirectDebitStatus = OracleJdbcConnection.crmDatabaseSelectQuery(queryCuesDirectDebitStatus);
+			ResultSet getCreditCardStatus = OracleJdbcConnection.crmDatabaseSelectQuery(queryCuesCreditCardStatus);
+
+			while (getDirectDebitStatus.next()) {
+				ddStatus = getDirectDebitStatus.getString("PAYMENT_STATUS");
+			}
+			while (getCreditCardStatus.next()) {
+				ccStatus = getCreditCardStatus.getString("PAYMENT_STATUS");
+			}
+
+			if (ddStatus.equalsIgnoreCase("ACTIVE") && ccStatus.equalsIgnoreCase("INACTIVE")) {
+				System.out.println("The DDs status is CRM is ACTIVE and CC is Inactive");
+				return true;
+			} else {
+				System.err.println(String.format("The Status of DD (%s) or CC (%s) in Cues is not as expected",
+						ddStatus, ccStatus));
+				return false;
+			}
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public static String queryToVerifyDDisActiveInWildBill(String custNumber) {
+		return "SELECT * FROM BS_PAYMENTS where ID = (SELECT MAX(ID) FROM BS_PAYMENTS where PAY_METHOD = 'DIRECT_DEBIT' AND CUST_NBR='"
+				+ custNumber + "')";
+	}
+
+	public static String queryToVerifyDDisActiveInCues(String custId) {
+		return "SELECT * FROM CUST_DIRECT_DEBIT_DETAILS WHERE ID = (SELECT MAX(ID) FROM CUST_DIRECT_DEBIT_DETAILS where CUST_ID = '"
+				+ custId + "')";
+	}
+
+	public static String queryToVerifyCCisInactiveInCues(String custId) {
+		return "SELECT * FROM CUST_CARD_DETAILS WHERE ID = (SELECT MAX(ID) FROM CUST_CARD_DETAILS WHERE CUST_ID = '"
+				+ custId + "')";
+	}
+}

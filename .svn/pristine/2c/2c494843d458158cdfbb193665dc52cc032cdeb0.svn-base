@@ -1,0 +1,148 @@
+package com.acneuro.test.automation.libraries;
+
+public class QueryUtils {
+
+	public static String queryOrderStatus(String orderNumber) {
+		return "SELECT * FROM ORD_ORDERS WHERE ORD_NUMBER='" + orderNumber + "'";
+	}
+
+	public static String queryUpdateOrderStatus(String orderNumber) {
+		System.out.println("update Query 1");
+		return "UPDATE ORD_ORDERS SET STATUS = 'RESOLVING_TASKS' "
+				+ "WHERE STATUS != 'RESOLVING_TASKS' AND ORD_NUMBER='" + orderNumber + "'";
+	}
+
+	public static String queryTaskId(String orderId) {
+		return "SELECT * FROM ORD_ORDER_TASKS WHERE ORD_ID='" + orderId + "'";
+	}
+
+	public static String querylatestProcessId(String orderId) {
+		return "SELECT max(PRI_ID) from wf_payload_parameters where value='" + orderId + "'";
+	}
+
+	public static String queryActionInstanceWithOrderId(String orderId) {
+		return "SELECT * from wf_action_instances where PRI_ID in "
+				+ "(Select PRI_ID from wf_payload_parameters where value='" + orderId + "')";
+	}
+
+	public static String queryActionInstanceWithOrderIdAndActionName(String orderId, String actionName) {
+		return "Select * from wf_action_instances where NAME = '" + actionName + "' and PRI_ID in "
+				+ "(Select PRI_ID from wf_payload_parameters where value='" + orderId + "')";
+	}
+
+	public static String queryActionInstanceWithProcessIdAndActionName(String processId, String actionName) {
+		return "Select * from wf_action_instances where NAME = '" + actionName + "' and PRI_ID = '" + processId + "'";
+	}
+
+	public static String queryUpdateActionInstanceScheduledTime(String processId, String actionName) {
+
+		System.out.println("Query To Update Action_Instances table to sysdate");
+
+		return "UPDATE WF_ACTION_INSTANCES SET SCHEDULED=sysdate WHERE PRI_ID='" + processId + "' AND name='"
+				+ actionName + "' AND STATUS='SCH'";
+	}
+
+	// All below update queries should be called for Provisioning activation
+	public static String queryUpdateOrderLines(String orderId) {
+
+		System.out.println("Query to Update ORD_ORDER_LINES");
+
+		return "Update ORD_ORDER_LINES set status='INPROCESS' where ord_id='" + orderId + "'";
+	}
+
+	public static String queryUpdateCinProducts(String orderId) {
+		System.out.println("Query To Update CIN_PRODUCTS");
+		return "Update cin_products set status='PNG' where order_id='" + orderId + "'";
+	}
+
+	public static String queryUpdateOrdOrders(String orderId) {
+		System.out.println("Query To Update ORD_ORDERS Table");
+		return "Update ord_orders set status='INPROCESS' where id='" + orderId + "'";
+	}
+
+	public static String queryUpdateActionInstances(String processId, String actionName) {
+		System.out.println("Query To Update ACTION_INSTANCES ");
+		return "Update WF_ACTION_INSTANCES set STATUS='WAI',RESULT ='', FINISHED ='', owner=null where PRI_ID ='"
+				+ processId + "' AND NAME ='" + actionName + "' AND STATUS='FIN'";
+	}
+
+	public static String queryUpdateProcessInstances(String processId, String actionName) {
+		System.out.println("update Query 7");
+		return "Update wf_process_instances set status='PRC' where ID='" + processId + "' and NAME='" + actionName
+				+ "'";
+	}
+
+	public static String queryMaxCustomerNumberFrCustomer() {
+		return "select max(CUSTOMER_NUMBER) MAX_CUSTOMER_NUMBER from CUST_CUSTOMERS where EMAIL_ADDRESS like '%MVNO_Automation%test.fr'";
+	}
+
+	public static String queryMaxCustomerNumberUKCustomer() {
+		return "select max(CUSTOMER_NUMBER) MAX_CUSTOMER_NUMBER from CUST_CUSTOMERS where EMAIL_ADDRESS like '%MVNO_Automation%test.uk'";
+	}
+
+	public static String queryLatestOrderNumberForUKPortIN(String customerID) {
+		return "Select max(ord_number) from ord_orders where customer_id='" + customerID + "'";
+	}
+
+	public static String queryOrderDetails(String orderNumber) {
+		// can check status of order here
+		return "Select * from ord_orders where ORD_NUMBER='" + orderNumber + "'";
+	}
+
+	public static String queryCustomerIdUKCustomer(String customerNumber) {
+		return "select ID from CUST_CUSTOMERS where customer_number = '" + customerNumber + "'";
+	}
+
+	public static String queryLatestExistingCustomerEmailId(String customerNumber) {
+		return "select EMAIL_ADDRESS from CUST_CUSTOMERS where CUSTOMER_NUMBER = '" + customerNumber + "'";
+	}
+
+	// Connect Numpos table
+	public static String queryLatestPortinNumberfromNumposDB(String Country, String Number) {
+		return "select max(PORTING_NUMBER) MAX_PORTING_NUMBER from NPS_REQUESTS " + "where Country = '" + Country
+				+ "' AND request_type = 'PORTIN' and porting_number like '" + Number + "'";
+	}
+
+	public static String queryLatestCinProductnumber(String customerNumber) {
+
+		return "SELECT max(CIN_NUMBER) FROM CIN_PRODUCTS WHERE CUSTOMER_NUMBER = '" + customerNumber
+				+ "' AND PRODUCT_TYPE = 'MBSUBSCRIPTION' AND STATUS = 'ACT'";
+
+	}
+
+	public static String queryLatestActiveCinProductnumber(String CountryFRorGB) {
+
+		return "SELECT max(CIN_NUMBER) FROM CIN_PRODUCTS WHERE "
+				+ "PRODUCT_TYPE = 'MBSUBSCRIPTION' AND "
+				+ "STATUS = 'ACT' AND "
+				+ "COUNTRY = '"+CountryFRorGB+"'";
+
+	}
+	
+	public static String queryCinProductTableWithCinProductNumber(String CinProductNumber) {
+
+		return "SELECT * FROM CIN_PRODUCTS WHERE CIN_NUMBER = '"+CinProductNumber+"'";
+
+	}
+
+	public static String queryCustomerMsisdn(String cinProductNumber) {
+
+		return "SELECT ATTRIBUTE1 FROM CIN_PRODUCTS WHERE CIN_NUMBER = '" + cinProductNumber + "'";
+	}
+
+	public static String queryPortoutID(String cinProductNumber) {
+
+		return "SELECT ATTRIBUTE2 FROM CIN_PRODUCTS WHERE CIN_NUMBER = '" + cinProductNumber + "'";
+	}
+
+	public static String queryPortOutProcessIdfromNumposDB(String portingNumber) {
+		return "select REFERENCE_ID from NPS_REQUESTS where porting_number ='" + portingNumber
+				+ "'  and request_type= 'PORTOUT'";
+	}
+	
+	public static String queryUsernameFromCustUsersTable(String customerId) {
+
+		return "SELECT USERNAME FROM CUST_USERS WHERE CUST_ID = '" + customerId + "'";
+	}
+}
+

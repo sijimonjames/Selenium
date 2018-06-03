@@ -1,0 +1,18 @@
+package com.acneuro.test.automation.uk_workflow_tests;
+
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.libraries.UKProjectSpecific;
+
+public class Testcase1 {
+
+	
+@Test
+	
+	public static void ukPortInWithPacCode(){
+		UKProjectSpecific.LoginToUKMyJoi();
+		
+	}
+
+	
+}

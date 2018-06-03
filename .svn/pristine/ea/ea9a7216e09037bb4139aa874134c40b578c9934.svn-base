@@ -1,0 +1,158 @@
+package com.acneuro.test.automation.france_workflow_tests;
+
+import java.sql.ResultSet;
+import org.testng.Assert;
+import org.testng.Reporter;
+import org.testng.annotations.Test;
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.libraries.FranceEnglishConfigLib;
+import com.acneuro.test.automation.libraries.FranceProjectSpecific;
+import com.acneuro.test.automation.libraries.QueryUtils;
+import com.acneuro.test.automation.libraries.OracleJdbcConnection;
+
+public class TC_2_FranceEnglishCustomerActivationWithPortIn extends FranceEnglishConfigLib {
+
+	public String accountCreation() {
+
+		// Step 1: verify the home page title
+		FranceProjectSpecific.verifyTitleOfPage("JOi Telecom");
+		// Step 2: Click on Order button
+		FranceProjectSpecific.orderCreationPage();
+		// step 3:check the radio button 'Joi Liberty' ----PRICE PLAN SELECTION
+		FranceProjectSpecific.joiLibertyPricePlan();
+		FranceProjectSpecific.combiSimTypeSelection();
+		// step 4: Click on 'Add To Basket' on same page,
+		FranceProjectSpecific.ourOfferPageAddToBasketButton();
+		// step 5: Click on 'Add To Basket' with Number porting
+		FranceProjectSpecific.addToBasketWithPortin();
+		// Step 6: click on "check out / Continue for Fr"
+		FranceProjectSpecific.checkOutOrder();
+		FranceProjectSpecific.FranceCustomerAccountCreation();
+		FranceProjectSpecific.Customer_details("Mrs.", "ACNEuro", "MVNO", "France Automation", "01011976",
+				"0123467890");
+		FranceProjectSpecific.uploadCustomerIdCopy();
+		try {
+			FranceProjectSpecific.contactAndBillingAdress("75007", "38", "1");
+			Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		// Update the excel sheet with a new number
+
+		FranceProjectSpecific.verifyTitleOfPage("JOi Account Created");
+//		FranceProjectSpecific.updateEmailIInExcelSheet();
+		try {
+			FranceProjectSpecific.continueButtonAfterAccountCreation();
+			FranceProjectSpecific.verifyTitleOfPage("Order");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		// Portin details
+			FranceProjectSpecific.continueToStep3WithPortin();
+
+		// UK-Bank Account details
+		try {
+			FranceProjectSpecific.franceBankDetailsAndClickToContinue(Constant.FrIbanNumber, Constant.FrSwiftCode);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		try {
+			FranceProjectSpecific.orderSummaryPageForNewCustomer("999999");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		try {
+			FranceProjectSpecific.Payment_Datacash(Constant.Card_Type1, Constant.Type1_CC_number, "2018",
+					Constant.Type1_CC_CVV);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		FranceProjectSpecific.verifyTitleOfPage("Your JOi Order Confirmation");
+		FranceProjectSpecific.takeScreenShot("C:/testing/workspace/Screenshots/mvno/Order_Creation.png");
+		String getOrderNumber = FranceProjectSpecific.getAndVerifyText("//div/article/section/p[2]/strong");
+		String orderNumber = getOrderNumber.substring(1);
+		driver.quit();
+		Reporter.log("Order is created successfully. France Order number is: " + orderNumber, true);
+		return orderNumber;
+	}
+
+	@Test
+	public void customerActivationWithPortIN() {
+		// Checking the database for status="RESOLVING_TASKS"(sometimes "NEW")
+		// change this always to "RESOLVING_TASKS"
+
+		String orderNumber = accountCreation();
+
+		String orderId = "";
+
+		try {
+			OracleJdbcConnection.crmDatabaseUpdateQuery(QueryUtils.queryUpdateOrderStatus(orderNumber));
+			ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(QueryUtils.queryOrderStatus(orderNumber));
+			while (resultSet.next()) {
+				orderId = resultSet.getString("ID");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		String taskId = ""; // Need task id to 'resolving_tasks'
+		try {
+			ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(QueryUtils.queryTaskId(orderId));
+			while (resultSet.next()) {
+				taskId = resultSet.getString("ID");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		String latestPriId = "";
+		try {
+			ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(QueryUtils.querylatestProcessId(orderId));
+			while (resultSet.next()) {
+				latestPriId = resultSet.getString("max(PRI_ID)");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		// RESOLVING_TASKS API signal
+		try {
+			FranceProjectSpecific.resolvingTasksSignal(latestPriId, taskId);
+		} catch (Exception e) {
+
+			e.printStackTrace();
+		}
+
+		// here we check if upfront payment action created
+		boolean checkActionUpfrontPayment = FranceProjectSpecific.checkIfActionExists(orderId, "ofUpfrontPaymentWait");
+		Assert.assertTrue(checkActionUpfrontPayment);
+
+		// here we check if upfront payment is finished successfully
+		boolean upfrontPaymentActionIsDone = FranceProjectSpecific.processUpfrontPayment(orderId);
+		Assert.assertTrue(upfrontPaymentActionIsDone);
+
+		// Eligibility check waiting
+		Assert.assertTrue(FranceProjectSpecific.processNumposForFrancePortIn(orderId));
+		Assert.assertTrue(FranceProjectSpecific.processEligibilityCheckWaiting(orderId));
+
+		// here we check if shipping signal action is created
+		boolean checkActionmbShipWaiting = FranceProjectSpecific.checkIfActionExists(orderId, "mbShipWaiting");
+		Assert.assertTrue(checkActionmbShipWaiting);
+
+		// here we check if upfront payment is finished successfully
+		boolean mbShipWaitingIsDone = FranceProjectSpecific.processShipWait(orderId);
+		Assert.assertTrue(mbShipWaitingIsDone);
+
+		// here we check if 'mbNumPosWaiting' action is created
+		Assert.assertTrue(FranceProjectSpecific.checkIfActionExists(orderId, "mbNumPosWaiting"));
+		// Process 'mbNumPosWaiting' action
+		Assert.assertTrue(FranceProjectSpecific.processNumposWaiting(orderId));
+		// Provisioning start changing to Now
+		Assert.assertTrue(FranceProjectSpecific.checkIfActionExists(orderId, "mbProvisionStart"));
+		Assert.assertTrue(FranceProjectSpecific.numposProvisioningstartToNow(orderId));
+
+		Assert.assertTrue(FranceProjectSpecific.checkIfActionExists(orderId, "mbProvisionWait"));
+
+		FranceProjectSpecific.provisioningDuringActivationOfOrders(orderId);
+
+	}
+}

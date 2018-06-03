@@ -1,0 +1,67 @@
+package com.acneuro.test.automation.direct_debit_And_Dunning_Tests;
+
+import java.io.File;
+
+import org.testng.Assert;
+import org.testng.Reporter;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.fileslibrary.FileTransferLibrary;
+import com.acneuro.test.automation.fileslibrary.FileUtilsLibrary;
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.mvno_project_library.MVNO_DunningWorkflowSpecific;
+
+/*
+ * @Author: Sijimon James
+ * Test: FRMVNO-37:Direct Debit Activation for FR
+ */
+public class TC_01_DirectDebitActivationForFranceAccount {
+
+	private static final String country = "FR";
+	private static final String remoteDir_DDActivation = "/opt/applications/sepa-mandate-update-disemp/test/input/";
+	private static String customerNumber = "unknown";
+	private static String customerId = "unknown";
+
+	@Test
+	public void Direct_Debit_Activation_For_France_Account() {
+
+		Reporter.log("TestLink Test: FRMVNO-37:Direct Debit Activation for FR");
+		System.out.println("TestLink Test: FRMVNO-37:Direct Debit Activation for FR");
+
+		try {
+			/*
+			 * Create a new customer or Find a customer with Payment method CC
+			 * active and DD pending
+			 */
+
+			customerId = MVNO_DunningWorkflowSpecific.latestCustomerNumberFromCuesWithDirectDebitPending();
+			customerNumber = MVNO_DunningWorkflowSpecific.findCustomerNumberfromCustomerId(customerId);
+
+			/*
+			 * Create a CSV file with
+			 * ----OCX_001_581953_CUST_<<yyyymmddhhmmss>>_25150845.csv------
+			 * with selected customer number and current date in it.
+			 */
+			File myOCXfile = FileUtilsLibrary.csvFileForDirectDebitActivation(customerNumber, country);
+
+			FileTransferLibrary.transferFileToRemoteDirectory(Constant.DD_HOSTNAME, myOCXfile, remoteDir_DDActivation);
+
+			/*
+			 * Go to;
+			 * http://ams1-uatjob-02:8080/sepa-mandate-update-disemp-web/?1 Run
+			 * the worker 'test FR UMR'
+			 */
+			System.out.println("Opening the worker....");
+			MVNO_DunningWorkflowSpecific.runWorkerForDDActivation();
+			System.out.println("The worker is triggered");
+			// Verify DD is active in CRM
+			Assert.assertTrue(MVNO_DunningWorkflowSpecific.verifyDirectDebitActivatedInCues(customerId));
+			System.out.println("DD is active in Cues");
+			// Test is success if DD is active is cues
+			System.out.println("France DD Activation test is successfully completed");
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+}

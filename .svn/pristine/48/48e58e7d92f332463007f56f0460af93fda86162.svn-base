@@ -1,0 +1,375 @@
+package com.acneuro.test.automation.fileslibrary;
+
+import static com.google.common.base.Preconditions.checkState;
+import static java.lang.Thread.sleep;
+import static org.apache.commons.io.FilenameUtils.getFullPath;
+import static org.apache.commons.io.FilenameUtils.getName;
+
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.io.PrintWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+
+import com.acneuro.test.automation.libraries.Constant;
+import com.jcraft.jsch.Channel;
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.ChannelShell;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Session;
+import com.jcraft.jsch.UIKeyboardInteractive;
+import com.jcraft.jsch.UserInfo;
+
+public final class FileTransferLibrary {
+
+	// private static final Logger LOG =
+	// LoggerFactory.getLogger(FileTransferLibrary.class);
+	private static final String SSH = "ssh";
+	private static final String FILE = "file";
+
+	private FileTransferLibrary() {
+
+	}
+
+	/**
+	 * <pre>
+	 * <code>
+	 * (&quot;file:/C:/home/file.txt&quot;, &quot;ssh://user:pass@host/home&quot;);
+	 * ("ssh://user:pass@host/home/file.txt", "file:/C:/home");
+	 * </code>
+	 *
+	 * <pre>
+	 *
+	 * @param host
+	 *            E.g:wild bill server
+	 * @param path
+	 *            Server path
+	 * @param toUri
+	 *            directory
+	 * @throws URISyntaxException
+	 */
+
+	public static void transferFileToRemoteDirectory(String hostName, File myFile, String remoteDirectory) {
+
+		String fileName = "";
+		String myFileWithDirectory = "file:/" + myFile.getAbsolutePath();
+		fileName = myFileWithDirectory.replace("\\", "/");
+		try {
+			sftp(hostName, remoteDirectory, fileName);
+
+			Thread.sleep(Constant.DEFAULT_SLEEP_TIME);
+			System.err.println(String.format("File ---%s--- is sent successfully", fileName));
+
+		} catch (URISyntaxException | InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void sftp(String host, String path, String fromUri) throws URISyntaxException {
+
+		String user = Constant.COMMON_USERNAME;
+		String password = Constant.COMMON_PASSWORD;
+		String toUri = "Create a new one";
+		String userInfo = user + ":" + password;
+
+		URI uri = new URI("ssh", userInfo, host, -1, path, null, null);
+		toUri = uri.toString();
+		System.out.println(uri.toString());
+
+		URI from = URI.create(fromUri);
+		URI to = URI.create(toUri);
+
+		if (SSH.equals(to.getScheme()) && FILE.equals(from.getScheme())) {
+			upload(from, to);
+		} else if (SSH.equals(from.getScheme()) && FILE.equals(to.getScheme())) {
+			download(from, to);
+		} else {
+			throw new IllegalArgumentException();
+		}
+	}
+
+	private static void upload(URI from, URI to) {
+		try (SessionHolder<ChannelSftp> session = new SessionHolder<>("sftp", to);
+				FileInputStream fis = new FileInputStream(new File(from))) {
+
+			// LOG.info("Uploading {} --> {}", from, mask(to));
+			ChannelSftp channel = session.getChannel();
+			channel.cd(to.getPath());
+			channel.put(fis, getName(from.getPath()));
+
+		} catch (Exception e) {
+			throw new RuntimeException("Cannot upload file", e);
+		}
+	}
+
+	private static void download(URI from, URI to) {
+		File out = new File(new File(to), getName(from.getPath()));
+		try (SessionHolder<ChannelSftp> session = new SessionHolder<>("sftp", from);
+				OutputStream os = new FileOutputStream(out);
+				BufferedOutputStream bos = new BufferedOutputStream(os)) {
+			// LOG.info("Downloading {} --> {}", mask(from), to);
+
+			ChannelSftp channel = session.getChannel();
+			channel.cd(getFullPath(from.getPath()));
+			channel.get(getName(from.getPath()), bos);
+
+		} catch (Exception e) {
+			throw new RuntimeException("Cannot download file", e);
+		}
+	}
+
+	/**
+	 * <pre>
+	 * <code>
+	 * shell("ssh://user:pass@host", System.in, System.out);
+	 * </code>
+	 * </pre>
+	 *
+	 * @param connectUri
+	 * @param is
+	 * @param os
+	 */
+	public static void shell(String connectUri, InputStream is, OutputStream os) {
+		try (SessionHolder<ChannelShell> session = new SessionHolder<>("shell", URI.create(connectUri))) {
+			shell(session, is, os);
+		}
+	}
+
+	/**
+	 * <pre>
+	 * <code>
+	 * String remoteOutput = shell("ssh://user:pass@host/work/dir/path", "ls")
+	 * </code>
+	 * </pre>
+	 *
+	 * @param connectUri
+	 * @param command
+	 */
+	public static String shell(String connectUri, String command) {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		try {
+			shell(connectUri, command, baos);
+			return baos.toString();
+		} catch (RuntimeException e) {
+			// LOG.warn(baos.toString());
+			throw e;
+		}
+	}
+
+	/**
+	 * <pre>
+	 * <code>
+	 * shell("ssh://user:pass@host/work/dir/path", "ls", System.out)
+	 * </code>
+	 * </pre>
+	 *
+	 * @param connectUri
+	 * @param script
+	 * @param out
+	 */
+	public static void shell(String connectUri, String script, OutputStream out) {
+		try (SessionHolder<ChannelShell> session = new SessionHolder<>("shell", URI.create(connectUri));
+				PipedOutputStream pipe = new PipedOutputStream();
+				PipedInputStream in = new PipedInputStream(pipe);
+				PrintWriter pw = new PrintWriter(pipe)) {
+
+			String workDir = session.getWorkDir();
+			if (workDir != null) {
+				pw.println("cd " + workDir);
+			}
+			pw.println(script);
+			pw.println("exit");
+			pw.flush();
+
+			shell(session, in, out);
+
+		} catch (IllegalStateException ise) {
+			throw ise;
+		} catch (Exception e) {
+			throw new RuntimeException("Cannot execute script", e);
+		}
+	}
+
+	private static void shell(SessionHolder<ChannelShell> session, InputStream is, OutputStream os) {
+		try {
+			ChannelShell channel = session.getChannel();
+			channel.setInputStream(is, true);
+			channel.setOutputStream(os, true);
+
+			// LOG.info("Starting shell for " + mask(session.uri));
+			channel.start();
+
+			session.awaitForExit();
+			session.assertExitStatus();
+		} catch (IllegalStateException ise) {
+			throw ise;
+		} catch (Exception e) {
+			throw new RuntimeException("Cannot execute shell ", e);
+		}
+	}
+
+	private static String mask(URI uri) {
+		return uri.toString().replaceFirst(":[^:]*?@", "@");
+	}
+
+	public static class SessionHolder<C extends Channel> implements Closeable {
+
+		private String channelType;
+		private URI uri;
+		private Session session;
+		private C channel;
+
+		@SuppressWarnings("serial")
+		public SessionHolder(String channelType, URI uri) {
+			this(channelType, uri, new HashMap<String, String>() {
+				{
+					put("StrictHostKeyChecking", "no");
+				}
+			});
+		}
+
+		public SessionHolder(String channelType, URI uri, Map<String, String> props) {
+			this.channelType = channelType;
+			this.uri = uri;
+			this.session = newSession(props);
+			this.channel = newChannel(session);
+		}
+
+		private Session newSession(Map<String, String> props) {
+			try {
+				Properties config = new Properties();
+				config.putAll(props);
+
+				JSch jsch = new JSch();
+				Session session = jsch.getSession(getUser(), uri.getHost(), getPort());
+				session.setPassword(getPass());
+				session.setUserInfo(new User(getUser(), getPass()));
+				session.setDaemonThread(true);
+				session.setConfig(config);
+				session.connect(5000);
+				return session;
+			} catch (JSchException e) {
+				throw new RuntimeException("Cannot create session for " + mask(uri), e);
+			}
+		}
+
+		@SuppressWarnings("unchecked")
+		private C newChannel(Session session) {
+			try {
+				Channel channel = session.openChannel(channelType);
+				if (channel instanceof ChannelShell) {
+					ChannelShell channelShell = (ChannelShell) channel;
+					channelShell.setPtyType("ANSI", 1000, 1000, 1000, 1000);
+				}
+				channel.connect();
+				return (C) channel;
+			} catch (Exception e) {
+				throw new RuntimeException("Cannot create " + channelType + " channel for " + mask(uri), e);
+			}
+		}
+
+		public void assertExitStatus() {
+			checkState(channel.getExitStatus() == 0, "Exit status %s for %s", channel.getExitStatus(), mask(uri));
+		}
+
+		public void awaitForExit() throws InterruptedException {
+			while (!channel.isEOF()) {
+				sleep(100);
+			}
+		}
+
+		public Session getSession() {
+			return session;
+		}
+
+		public C getChannel() {
+			return channel;
+		}
+
+		@Override
+		public void close() {
+			if (channel != null) {
+				channel.disconnect();
+			}
+			if (session != null) {
+				session.disconnect();
+			}
+		}
+
+		public int getPort() {
+			return uri.getPort() < 0 ? 22 : uri.getPort();
+		}
+
+		public String getUser() {
+			System.out.println(uri.getUserInfo().split(":")[0]);
+			return uri.getUserInfo().split(":")[0];
+		}
+
+		public String getPass() {
+			return uri.getUserInfo().split(":")[1];
+		}
+
+		public String getWorkDir() {
+			return uri.getPath();
+		}
+	}
+
+	private static class User implements UserInfo, UIKeyboardInteractive {
+
+		private String user;
+		private String pass;
+
+		public User(String user, String pass) {
+			this.user = user;
+			this.pass = pass;
+		}
+
+		@Override
+		public String getPassword() {
+			return pass;
+		}
+
+		@Override
+		public boolean promptYesNo(String str) {
+			return false;
+		}
+
+		@Override
+		public String getPassphrase() {
+			return user;
+		}
+
+		@Override
+		public boolean promptPassphrase(String message) {
+			return true;
+		}
+
+		@Override
+		public boolean promptPassword(String message) {
+			return true;
+		}
+
+		@Override
+		public void showMessage(String message) {
+			// do nothing
+		}
+
+		@Override
+		public String[] promptKeyboardInteractive(String destination, String name, String instruction, String[] prompt,
+				boolean[] echo) {
+			return null;
+		}
+	}
+}

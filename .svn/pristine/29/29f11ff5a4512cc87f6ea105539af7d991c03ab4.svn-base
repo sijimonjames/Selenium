@@ -1,0 +1,21 @@
+package com.acneuro.test.automation.uk_workflow_tests;
+
+import java.util.Date;
+
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.libraries.FranceProjectSpecific;
+
+public class Testcase1 {
+
+	@Test(priority = 1)
+	public static void ukPortOutFromManageSettings() {
+
+		String date = FranceProjectSpecific.dateToString(new Date(), "yyyy-MM-dd hh:mm:ss");
+		
+		System.out.println(String.format("the current date is %s", date));
+	}
+
+	
+
+}

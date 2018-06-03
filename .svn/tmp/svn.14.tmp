@@ -1,0 +1,77 @@
+package com.acneuro.test.automation.portingTests;
+
+import java.sql.ResultSet;
+
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.db_connection_libraries.DBUtils;
+import com.acneuro.test.automation.db_connection_libraries.OracleJdbcConnection;
+import com.acneuro.test.automation.libraries.ConfigLib;
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.mvno_project_library.UKProjectSpecific;
+
+public class TC_03_UKCustomerActivationWithPortIn extends ConfigLib {
+
+	private static String customerNumber = "Latest Active";
+	private static String joiNumber = "Latest Active";
+	private static String portingNumber = "unique";
+
+	@Test
+	public static void ukPortInWithPacCode() {
+
+		UKProjectSpecific.ukUrlSelection();
+
+		String customerId = "";
+		String orderNumber = "";
+		String orderStatus = "";
+
+		try {
+
+			joiNumber = UKProjectSpecific.LoginToUKMyJoiWithActiveSubscription();
+			System.out.println("Joi mobile Number: " + joiNumber);
+
+			String queryCustomerNumber = DBUtils.queryCinProductsWithMsisdn(joiNumber);
+			ResultSet getCustomerNumber = OracleJdbcConnection.crmDatabaseSelectQuery(queryCustomerNumber);
+			while (getCustomerNumber.next()) {
+				customerNumber = getCustomerNumber.getString("CUSTOMER_NUMBER");
+				System.out.println("Customer Number:" + customerNumber);
+			}
+
+			UKProjectSpecific.ukManageSettingsFromSubscriptions(joiNumber);
+
+			portingNumber = UKProjectSpecific.UniquePortInNumberUK();
+
+			UKProjectSpecific.ukPortInFromManageSettings(joiNumber, portingNumber);
+
+			// Verification of PortIn success
+
+			ResultSet queryCustomerId = OracleJdbcConnection
+					.crmDatabaseSelectQuery(DBUtils.queryCustomerIdCustomer(customerNumber));
+			while (queryCustomerId.next()) {
+				customerId = queryCustomerId.getString("ID");
+			}
+
+			ResultSet queryLatestOrderNumber = OracleJdbcConnection
+					.crmDatabaseSelectQuery(DBUtils.queryLatestOrderNumberForUKPortIN(customerId));
+			while (queryLatestOrderNumber.next()) {
+				orderNumber = queryLatestOrderNumber.getString("MAX(ORD_NUMBER)");
+				System.out.println("Portin OrderNumber: " + orderNumber);
+			}
+
+			ResultSet queryOrderStatus = OracleJdbcConnection
+					.crmDatabaseSelectQuery(DBUtils.queryOrderDetails(orderNumber));
+			while (queryOrderStatus.next()) {
+				orderStatus = queryOrderStatus.getString("STATUS");
+				System.out.println("Portin Order Status: " + orderStatus);
+				Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+				Assert.assertEquals(orderStatus, "COMPLETED");
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	}
+
+}

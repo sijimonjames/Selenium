@@ -1,0 +1,82 @@
+package com.acneuro.test.automation.fileslibrary;
+
+/**
+ * @author sijimon james
+ *
+ */
+public class FileEntities {
+
+	private String customerNumber; // Cues customer account number
+	private String diseAccountnumber; // from wildbill tables
+	private String dueAmount; // Amount
+	private String rejectionreason; // Fatal or Non-fatal
+	/**
+	 * @return the customerNumber
+	 */
+	public String getCustomerNumber() {
+		return customerNumber;
+	}
+	/**
+	 * @param customerNumber the customerNumber to set
+	 */
+	public void setCustomerNumber(String customerNumber) {
+		this.customerNumber = customerNumber;
+	}
+	/**
+	 * @return the diseAccountnumber
+	 */
+	public String getDiseAccountnumber() {
+		return diseAccountnumber;
+	}
+	/**
+	 * @param diseAccountnumber the diseAccountnumber to set
+	 */
+	public void setDiseAccountnumber(String diseAccountnumber) {
+		this.diseAccountnumber = diseAccountnumber;
+	}
+	/**
+	 * @return the dueAmount
+	 */
+	public String getDueAmount() {
+		return dueAmount;
+	}
+	/**
+	 * @param dueAmount the dueAmount to set
+	 */
+	public void setDueAmount(String dueAmount) {
+		this.dueAmount = dueAmount;
+	}
+	/**
+	 * @return the rejectionreason
+	 */
+	public String getRejectionreason() {
+		return rejectionreason;
+	}
+	/**
+	 * @param rejectionreason the rejectionreason to set
+	 */
+	public void setRejectionreason(String rejectionreason) {
+		this.rejectionreason = rejectionreason;
+	}
+	/**
+	 * @param customerNumber
+	 * @param diseAccountnumber
+	 * @param dueAmount
+	 * @param rejectionreason
+	 * @param creationDate
+	 */
+	public FileEntities(String customerNumber, String diseAccountnumber, String dueAmount, String rejectionreason) {
+		super();
+		this.customerNumber = customerNumber;
+		this.diseAccountnumber = diseAccountnumber;
+		this.dueAmount = dueAmount;
+		this.rejectionreason = rejectionreason;
+	}
+	/**
+	 * 
+	 */
+	public FileEntities() {
+		super();
+	}
+
+}

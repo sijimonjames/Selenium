@@ -1,0 +1,16 @@
+package com.acneuro.test.automation.direct_debit_And_Dunning_Tests;
+
+// @Author: SIJIMON JAMES
+// @Test: Reinstate of DD as payment method when CC retry OK after a NON-Fatal DD rejection
+
+public class TestClass {
+	
+	public static void FranceFrenchUrlSelection() {
+	try{
+		System.out.println("test class");
+		} catch (Exception e) {
+			
+			e.printStackTrace();
+		}
+	}
+}

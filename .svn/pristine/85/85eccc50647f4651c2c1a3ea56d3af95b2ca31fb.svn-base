@@ -1,0 +1,53 @@
+package com.acneuro.test.automation.libraries;
+
+import java.util.concurrent.TimeUnit;
+
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.ie.InternetExplorerDriver;
+import org.testng.Reporter;
+import org.testng.annotations.BeforeMethod;
+
+public class FranceEnglishConfigLib {
+	// opening the required browser and page
+	public static WebDriver driver;
+
+	@BeforeMethod
+	public void preCondition() {
+		String configFile = Constant.DEFAULT_TESTDATA_LOCATION +"/"+ Constant.configFileName;
+		String browserType = Generic.getCellValue(configFile, "Browser_selection", 2, 1);
+		Reporter.log(browserType);
+		System.out.println(browserType);
+		String url = Generic.getCellValue(configFile, "Browser_selection", 3, 1);
+		Reporter.log(url);
+
+		if (browserType.equals("Internet Explorer")) {
+			System.setProperty("webdriver.ie.driver", Constant.IE_Driver_Path);
+			driver = new InternetExplorerDriver();
+			
+		} else if (browserType.equals("Google Chrome")) {
+			System.setProperty("webdriver.chrome.driver", Constant.Chrome_Driver_Path);
+			driver = new ChromeDriver();
+			
+		} else {
+			driver = new FirefoxDriver();
+			
+		}
+		// get the url of the page JOi UK/FR_FR/FR_EN
+		driver.get(url);
+		Reporter.log("URL: " + url, true);
+
+		// implicit wait to complete each browser action
+		driver.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
+
+		// to maximize the opening browser window
+		driver.manage().window().maximize();
+	}
+	
+	//	@AfterMethod
+//	public void postCondition() {
+//		driver.quit();
+//		Reporter.log("Application is closed down", true);
+//	}
+}

@@ -1,0 +1,45 @@
+package com.acneuro.test.automation.uk_workflow_tests;
+
+import java.util.concurrent.TimeUnit;
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.firefox.FirefoxDriver;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.libraries.UKProjectSpecific;
+
+public class Testcase1 {
+
+	@Test
+	public static void workerTriggerForBillingUpdate() {
+
+		try {
+			String workerUrl = Constant.billsrvWorkerUrl;
+			
+			WebDriver driver = new FirefoxDriver();
+			// implicit wait to complete each browser action
+			driver.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
+			driver.get(workerUrl);
+			// to maximize the opening browser window
+			driver.manage().window().maximize();
+			// Trigger worker 'QueryOrderStatusJob'
+			WebElement workerQueryOrderStatusJob = driver.findElement(By.xpath("//div[3]/div/div[3]/div[2]/a[1]"));
+			UKProjectSpecific.scrollDownToView(workerQueryOrderStatusJob);
+			workerQueryOrderStatusJob.click();
+			Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+			// Trigger worker 'QuerySubscriptionJob'
+			WebElement workerQuerySubscriptionJob = driver
+					.findElement(By.xpath("//div[2]/div[3]/div/div[16]/div[2]/a[1]"));
+			UKProjectSpecific.scrollDownToView(workerQuerySubscriptionJob);
+			workerQuerySubscriptionJob.click();
+			Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+			driver.quit();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+}

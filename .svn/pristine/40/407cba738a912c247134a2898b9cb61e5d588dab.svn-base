@@ -1,0 +1,59 @@
+package com.acneuro.test.automation.page_objects;
+
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+import org.openqa.selenium.support.How;
+
+import com.acneuro.test.automation.libraries.BaseClass;
+
+/**
+ * @author sijimon james
+ * @Library Page Objects: subscriptions > Manage setting web element locations
+ * 
+ */
+
+public class My_JOi_Account_Creation_Page extends BaseClass {
+
+	public My_JOi_Account_Creation_Page(WebDriver driver) {
+		super(driver);
+	}
+
+	
+	@FindBy(how = How.XPATH, using = "//div[@class='select-style select-style quarter']/select")
+	public static WebElement customer_title;
+
+	@FindBy(how = How.NAME, using = "personal-details-fieldset__first-name")
+	public static WebElement customer_first_name;
+	
+	@FindBy(how = How.NAME, using = "personal-details-fieldset__prefix")
+	public static WebElement customer_middle_name;
+	
+	@FindBy(how = How.NAME, using = "personal-details-fieldset__last-name")
+	public static WebElement customer_last_name;
+	
+	@FindBy(how = How.NAME, using = "personal-details-fieldset__date-of-birth")
+	public static WebElement customer_date_of_birth;
+
+	@FindBy(how = How.NAME, using = "personal-details-fieldset__phone-number")
+	public static WebElement customer_phone_number;
+	
+	@FindBy(how = How.CLASS_NAME, using = "addvalZipcode")
+	public static WebElement customer_postCode;
+	
+	@FindBy(how = How.NAME, using = "addval__street")
+	public static WebElement customer_house_number;
+	
+//	@FindBy(how = How.XPATH, using = "//input[@value = 'FIND ADDRESS']")
+//	public static WebElement customer_find_address_button;
+	
+	@FindBy(how = How.CSS, using = "input[class='addvalValidateButton call-to-action button']")
+	public static WebElement customer_find_address_button;
+
+	@FindBy(how = How.XPATH, using = "//div/select[@name = 'addval__suggestions']")
+	public static WebElement customer_address_drop_down;
+
+	@FindBy(how = How.XPATH, using = "//section[@class='text-right buttons']/input")
+	public static WebElement customer_create_account_button;
+	
+}

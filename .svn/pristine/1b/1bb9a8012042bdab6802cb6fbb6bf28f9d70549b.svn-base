@@ -1,0 +1,159 @@
+package com.acneuro.test.automation.customer_Account_And_Order_Creation_Tests;
+
+import org.testng.Assert;
+import org.testng.Reporter;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.libraries.ConfigLib;
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.mvno_project_library.FranceProjectSpecific;
+import com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific;
+
+public class TC_06_FranceFrenchCustomerActivation extends ConfigLib {
+
+	private static String newEmailId = "";
+	private static String customerNumber = "";
+
+	@Test
+	public void customerCreation() throws InterruptedException {
+
+		// wake-up France French URL
+		FranceProjectSpecific.FranceFrenchUrlSelection();
+		CustomerActivation();
+		System.err.println("Provisioning is completed, test go for a sleep for coulple of minutes");
+		Thread.sleep(Constant.DEFAULT_LONG_SLEEP_TIME);
+	}
+
+	public void CustomerActivation() {
+
+		String orderNumber = "";
+		String orderId = "";
+
+		// Video recording start
+		// VideoRecording.startRecording();
+		orderNumber = accountCreation();
+		/*
+		 * Fail the test if Order is in any other status other than resolving
+		 * tasks
+		 */
+		// verify for resolving tasks
+		Assert.assertTrue(MVNOProjectSpecific.CheckStatusOfOrder(orderNumber));
+		// RESOLVING_TASKS API signal
+		orderId = MVNOProjectSpecific.processResolvingTasksSignal(orderNumber);
+		// here we check if upfront payment action created
+		boolean checkActionUpfrontPayment = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId,
+				"ofUpfrontPaymentWait");
+		Assert.assertTrue(checkActionUpfrontPayment);
+
+		// here we check if upfront payment is finished successfully
+		boolean upfrontPaymentActionIsDone = MVNOProjectSpecific.processUpfrontPayment(orderId);
+		Assert.assertTrue(upfrontPaymentActionIsDone);
+
+		// here we check if shipping signal action is created
+		boolean checkActionmbShipWaiting = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId, "mbShipWaiting");
+		Assert.assertTrue(checkActionmbShipWaiting);
+
+		// here we check if upfront payment is finished successfully
+		boolean mbShipWaitingIsDone = FranceProjectSpecific.processShipWait(orderId, "mbShipWaiting");
+		Assert.assertTrue(mbShipWaitingIsDone);
+
+		// here we check if SIM activation action is created
+		boolean checkActionmbSimActivation = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId,
+				"mbSimActivation");
+		Assert.assertTrue(checkActionmbSimActivation);
+
+		// If SIM activation action present activate the SIM in MYJOi
+		FranceProjectSpecific.LoginToMyJoiFranceFrench(newEmailId);
+
+		FranceProjectSpecific.activateYourSIM_French();
+		Reporter.log("SIM activation is completed using MyJOi", true);
+
+		boolean checkActionmbProvisionWait = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId,
+				"mbProvisionWait");
+		Assert.assertTrue(checkActionmbProvisionWait);
+
+		MVNOProjectSpecific.provisioningDuringActivationOfOrders(orderId);
+	}
+
+	public static String accountCreation() {
+		String orderNumber = "";
+
+		MVNOProjectSpecific.hideCookieMessage();
+
+		// Step 1: verify the home page title
+		MVNOProjectSpecific.verifyTitleOfPage("JOi Telecom");
+		// MVNOProjectSpecific.takeScreenShot("C:/testing/workspace/Screenshots/mvno/homepage_france.png");
+		
+		// Step 2: Click on order button
+		FranceProjectSpecific.orderCreationPageInFrench();
+		
+		// step 3:check the radio button 'Joi Liberty' ----PRICE PLAN SELECTION
+		MVNOProjectSpecific.pricePlanSelection("joiLibertyFR");
+		MVNOProjectSpecific.SimTypeSelectionForPricePlan("combi", "liberty");
+		// step 4: Click on 'Add To Basket' on same page,
+		
+		// this can be used for any price plan
+		MVNOProjectSpecific.ourOfferPageAddToBasketButton();
+		
+		// step 5: Click on 'Add To Basket' without Number porting
+		MVNOProjectSpecific.add_to_basket_without_porting();
+		
+		// Step 6: click on "check out / Continue for Fr"
+		MVNOProjectSpecific.checkOutOrder();
+		
+		// Get the Email ID
+		newEmailId = FranceProjectSpecific.FranceCustomerAccountCreation();
+
+		MVNOProjectSpecific.Customer_details("Mrs.", username, "MVNO", "France Automation", "01011960", "0123467890");
+		FranceProjectSpecific.uploadCustomerIdCopy("French");
+		MVNOProjectSpecific.contactAndBillingAdress("75007", "7", "2");
+		MVNOProjectSpecific.verifyTitleOfPage("Compte JOi Crée");
+		
+		// Get the customer number
+		customerNumber = MVNOProjectSpecific.queryLatestCustomerNumber("FR");
+
+		System.out.println("Customer Number created: " + customerNumber);
+		MVNOProjectSpecific.continueButtonAfterAccountCreation();
+
+		// Subscription details - Subscription is for same customer
+		MVNOProjectSpecific.continueToStep3WithoutPorting();
+
+		// France-Bank Account details
+		MVNOProjectSpecific.franceBankDetailsAndClickToContinue(Constant.FrIbanNumber, Constant.FrSwiftCode);
+		MVNOProjectSpecific.orderSummaryPageForNewCustomer("999999");
+
+		// temporarily update Email ID
+		MVNOProjectSpecific.updateEmailIdInCust_customersTable(Constant.PERSONAL_EMAIL_ADRRESS, customerNumber);
+
+		System.out.println(String.format("Email address is updated to %s", Constant.PERSONAL_EMAIL_ADRRESS));
+
+		MVNOProjectSpecific.Payment_Datacash(Constant.Card_Type1, Constant.Type1_CC_number, "2018",
+				Constant.Type1_CC_CVV);
+
+		MVNOProjectSpecific.verifyTitleOfPage("Votre Confirmation De Commande JOi");
+		
+		MVNOProjectSpecific
+				.takeScreenShot(".//ScreenShots/France_French/France_French_Order_Creation.png");
+		
+		String getOrderNumberWithHash = MVNOProjectSpecific.getAndVerifyText("//div/article/section/p[2]/strong");
+		orderNumber = getOrderNumberWithHash.substring(1);
+		driver.quit();
+
+		// video recording stop
+		// VideoRecording.stopRecording();
+
+		Reporter.log("Order is created in French Language. France Order number is: " + orderNumber, true);
+
+		return orderNumber;
+	}
+
+	@AfterMethod
+	private static void postMethodToChangeEmail() {
+		// change the email id back to normal
+		MVNOProjectSpecific.updateEmailIdInCust_customersTable(newEmailId, customerNumber);
+		System.out.println(String.format("Email Adress is changed to original: %s", newEmailId));
+
+	}
+
+}

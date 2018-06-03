@@ -1,0 +1,58 @@
+package com.acneuro.test.automation.sikuli;
+
+import org.sikuli.script.App;
+import org.sikuli.script.FindFailed;
+import org.sikuli.script.Key;
+import org.sikuli.script.Screen;
+
+public class TestDiseMPConnection {
+	@SuppressWarnings("unused")
+	public static void wakeUpCallForDise() throws InterruptedException {
+		// Screen s = new Screen();
+		//
+		App myApp = new App("diseMp");
+
+		myApp = App
+				.open("C:\\Program Files\\diseMP\\4.2.5\\ACN-QA-UAT1\\Copy-ForAutomation\\install-diseMP-client.bat");
+		App.close("diseMp");
+
+		// Username and password
+	}
+
+	public static void wakeUpCallForBosanovaWithLogin() throws InterruptedException, FindFailed {
+		// Screen s = new Screen();
+		//
+		Screen screen = new Screen();
+
+		App.open("C:\\Program Files\\BOSaNOVA\\BOSaNOVA Secure\\Bsmdemul.exe");
+
+		Thread.sleep(10000);
+
+		boolean sessionActive = SikuliLibrary
+				.checkImageIsPresentAndReturnTrue(".//sikuli_Images/Session_Existing_1.PNG");
+		// Click on session button using the image
+		if (sessionActive == true) {
+
+			SikuliLibrary.sikulifindAndClickOnImageLocation(".//sikuli_Images/session_bosanova.PNG");
+
+			// Down arrow twice to close all connections
+			screen.type(Key.DOWN + Key.DOWN + Key.ENTER);
+			Thread.sleep(5000);
+		}
+
+		// open a new session
+
+		SikuliLibrary.sikulifindAndClickOnImageLocation(".//sikuli_Images/session_bosanova.PNG");
+
+		screen.type(Key.DOWN + Key.DOWN + Key.RIGHT + Key.ENTER);
+
+		// Wait for the image
+		screen.wait(".//sikuli_Images/Username_Password_bosanova.PNG");
+
+		// Username and password
+		screen.type("sijames" + Key.TAB + "siji2016" + Key.ENTER);
+
+		App.close("Bsmdemul");
+
+	}
+}

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="Suite">
+	<test name="customer Creation and Activation">
+
+		<classes>
+
+			<class
+				name="com.acneuro.test.automation._01_UK_price_plans.TC_01_UK_JOi_Small_Talkplan_New_Customer" />
+			<class
+				name="com.acneuro.test.automation._01_UK_price_plans.TC_07_UK_JOi_Medium_Talkplan_ExistingCustomer" />
+			<class
+				name="com.acneuro.test.automation._01_UK_price_plans.TC_09_UK_JOi_X_Large_New_Customer_Auto_Billing" />
+
+
+			<class
+				name="com.acneuro.test.automation._02_FR_English_price_plans.TC_03_FR_JOi_Unity_English_New_Customer" />
+			<class
+				name="com.acneuro.test.automation._02_FR_English_price_plans.TC_07_FR_JOi_Big_Price_Plan_ExistingCustomer" />
+			<class
+				name="com.acneuro.test.automation._02_FR_English_price_plans.TC_09_FR_JOi_Fraternity_English_New_Customer_Auto_Billing" />
+
+
+			<class
+				name="com.acneuro.test.automation._03_FR_French_price_plans.TC_04_FR_JOi_Egalite_French_New_Customer" />
+			<class
+				name="com.acneuro.test.automation._03_FR_French_price_plans.TC_07_FR_JOi_Big_French_ExistingCustomer" />
+
+		</classes>
+
+	</test> <!-- Test -->
+
+	<listeners>
+		<listener class-name="com.acneuro.test.automation.libraries.RetryListener" />
+	</listeners>
+
+</suite> <!-- Suite -->

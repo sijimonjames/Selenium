@@ -1,0 +1,238 @@
+package com.acneuro.test.automation.customer_Account_And_Order_Creation_Tests;
+
+import static java.lang.Thread.sleep;
+
+import java.sql.ResultSet;
+
+import org.testng.Assert;
+import org.testng.Reporter;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.db_connection_libraries.OracleDBUtils;
+import com.acneuro.test.automation.db_connection_libraries.OracleJdbcConnection;
+import com.acneuro.test.automation.libraries.ConfigLib;
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.mvno_project_library.FranceProjectSpecific;
+import com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific;
+
+/*
+ * @Author: Sijimon James
+ * Test: France - English Auto-billing and Activation
+ */
+
+public class TC_10_FranceEnglishCustomerAutoBilling extends ConfigLib {
+
+	private static String orderId = "unknown";
+	private static String orderNumber = "unknown";
+	private static String processId = "unknown";
+	private static String newEmailId = "unknown";
+	private static String customerNumber = "to be created";
+
+	@Test
+	public void franceCustomerAutoBillingProcess() throws InterruptedException {
+
+		FranceProjectSpecific.FranceEnglishUrlSelection();
+		// Create an account
+		orderNumber = account_creation();
+
+		/*
+		 * Fail the test if Order is in any other status other than resolving
+		 * tasks
+		 */
+		Assert.assertTrue(MVNOProjectSpecific.CheckStatusOfOrder(orderNumber));
+
+		// RESOLVING_TASKS API signal
+		orderId = MVNOProjectSpecific.processResolvingTasksSignal(orderNumber);
+
+		// here we check if upfront payment action created
+		boolean checkActionUpfrontPayment = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId,
+				"ofUpfrontPaymentWait");
+		Assert.assertTrue(checkActionUpfrontPayment);
+
+		// here we check if upfront payment is finished successfully
+		boolean upfrontPaymentActionIsDone = MVNOProjectSpecific.processUpfrontPayment_Jackal(orderId);
+		Assert.assertTrue(upfrontPaymentActionIsDone);
+
+		// here we check if shipping signal action is created
+		boolean checkActionmbShipWaiting = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId, "mbShipWaiting");
+		Assert.assertTrue(checkActionmbShipWaiting);
+
+		// here we check if Shipping wait is finished successfully
+		boolean mbShipWaitingIsDone = FranceProjectSpecific.processShipWait(orderId, "mbShipWaiting");
+		Assert.assertTrue(mbShipWaitingIsDone);
+
+		// here we check if SIM activation action is created
+		boolean checkActionmbSimActivation = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId,
+				"mbSimActivation");
+		Assert.assertTrue(checkActionmbSimActivation);
+
+		/*
+		 * Auto billing code
+		 */
+
+		Assert.assertTrue(checkIfActionExistsForOrderWithScheduledStatus("mbRevocation", "SCH"));
+		// verify auto-bill starts
+		Assert.assertTrue(changeMbRevocationActionToNowUntilAutoBillStarts());
+		// check actions finished in success
+		Assert.assertTrue(MVNOProjectSpecific.checkForAnyActionIsCompletedInSuccess(orderId, "mBAutoBillWait"));
+		System.out.println("Auto Billing is successfully Completed");
+		Reporter.log("Auto Billing is successfully Completed: " + customerNumber);
+
+		/*
+		 * Continue with normal subscription activation process
+		 */
+
+		// If SIM activation action present activate the SIM in MYJOi
+		FranceProjectSpecific.LoginToMyJoiFranceEnglish(newEmailId);
+		FranceProjectSpecific.activateYourSIM_English();
+		Reporter.log("SIM activation is completed using MyJOi", true);
+
+		boolean checkActionmbProvisionWait = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId,
+				"mbProvisionWait");
+		Assert.assertTrue(checkActionmbProvisionWait);
+
+		FranceProjectSpecific.provisioningCheckForFrance(orderId);
+
+		System.err.println("Provisioning is completed, test go for a sleep for coulple of minutes");
+		Thread.sleep(Constant.DEFAULT_LONG_SLEEP_TIME);
+
+	}
+
+	public String account_creation() {
+
+		// video recording
+		// VideoRecording.startRecording();
+
+		// Step 1: verify the home page title
+		MVNOProjectSpecific.verifyTitleOfPage("JOi Telecom");
+		// Step 2: Click on order button
+		MVNOProjectSpecific.orderCreationPageInEnglish();
+		// step 3:check the radio button 'Joi Liberty' ----PRICE PLAN SELECTION
+		MVNOProjectSpecific.pricePlanSelection_France("joiLibertyFR");
+		FranceProjectSpecific.combiSimTypeSelectionForLiberty();
+		// step 4: Click on 'Add To Basket' on same page,
+		// this can be used for any price plan
+		FranceProjectSpecific.ourOfferPageAddToBasketButton();
+		// step 5: Click on 'Add To Basket' without Number porting
+		FranceProjectSpecific.add_to_basket_without_porting();
+		// Step 6: click on "check out / Continue for Fr"
+		FranceProjectSpecific.checkOutOrder();
+
+		newEmailId = FranceProjectSpecific.FranceCustomerAccountCreation();
+
+		FranceProjectSpecific.customerDetails("MVNO", "Fr AutoBilling", "01011970", "0234678901");
+		FranceProjectSpecific.uploadCustomerIdCopyForFrenchEnglish();
+		FranceProjectSpecific.contactAndBillingAdress("75005", "7");
+		try {
+			Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+		} catch (InterruptedException e1) {
+			e1.printStackTrace();
+		}
+
+		// Verify the account creation page
+		MVNOProjectSpecific.verifyTitleOfPage("JOi Account Created");
+		// Get the customer number
+		customerNumber = MVNOProjectSpecific.queryLatestCustomerNumber("FR");
+
+		System.out.println("Customer Number created: " + customerNumber);
+
+		// FranceProjectSpecific.updateEmailIInExcelSheet();
+		FranceProjectSpecific.continueButtonAfterAccountCreation();
+
+		// Subscription details - Subscription is for same customer
+		FranceProjectSpecific.continueToStep3WithoutPorting();
+
+		// France-Bank Account details
+		FranceProjectSpecific.franceBankDetailsAndClickToContinue(Constant.FrIbanNumber, Constant.FrSwiftCode);
+
+		MVNOProjectSpecific.orderSummaryPageForNewCustomer("999999");
+
+		// temporarily update Email ID
+		MVNOProjectSpecific.updateEmailIdInCust_customersTable(Constant.PERSONAL_EMAIL_ADRRESS, customerNumber);
+
+		System.out.println(String.format("Email address is updated to %s", Constant.PERSONAL_EMAIL_ADRRESS));
+
+		FranceProjectSpecific.Payment_Datacash(Constant.Card_Type1, Constant.Type1_CC_number, "2018",
+				Constant.Type1_CC_CVV);
+
+		MVNOProjectSpecific.verifyTitleOfPage("Your JOi Order Confirmation");
+		MVNOProjectSpecific.takeScreenShot(".//Screenshots/France_English/TC12/Auto_Billing_Tests.png");
+		String getOrderNumberWithHash = MVNOProjectSpecific.getAndVerifyText("//div/article/section/p[2]/strong");
+		orderNumber = getOrderNumberWithHash.substring(1);
+
+		// stop video recording
+		// VideoRecording.stopRecording();
+		driver.quit();
+		Reporter.log("Order is created successfully. France Order number is: " + orderNumber, true);
+
+		return orderNumber;
+	}
+
+	public static boolean checkIfActionExistsForOrderWithScheduledStatus(String actionName, String actionStatus) {
+		try {
+			for (int i = 0; i < Constant.DEFAULT_RETRY_COUNT; i++) {
+				ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(
+						queryActionInstanceWithOrderIdAnd_SCH_ActionName(actionName, actionStatus));
+
+				while (resultSet.next()) {
+					processId = resultSet.getString("PRI_ID");
+					if (resultSet.wasNull()) {
+						return false;
+
+					} else {
+						// Find the process ID
+						System.out.println(String.format("Action '%s' is in SCH status with Process ID: %s", actionName,
+								processId));
+						return true;
+					}
+				}
+				sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public static boolean changeMbRevocationActionToNowUntilAutoBillStarts() {
+
+		// here we check if mbProvisionStart action is created
+		try {
+			for (int i = 0; i < Constant.DEFAULT_RETRY_COUNT; i++) {
+
+				ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(
+						queryActionInstanceWithOrderIdAnd_SCH_ActionName("mbRevocation", "SCH"));
+
+				if (resultSet.next()) {
+					String status = resultSet.getString("STATUS");
+					System.out.println("Status: " + status);
+					OracleJdbcConnection.crmDatabaseUpdateQuery(
+							OracleDBUtils.queryUpdateActionInstanceScheduledTime(processId, "mbRevocation"));
+				} else {
+					System.out.println("All 'mbRevocation' actions are finished");
+					return true;
+				}
+				// 90 Sec wait to process
+				sleep(Constant.DEFAULT_LONG_SLEEP_TIME);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public static String queryActionInstanceWithOrderIdAnd_SCH_ActionName(String actionName, String actionStatus) {
+		return "Select * from wf_action_instances where NAME = 'mbRevocation' AND " + "STATUS = 'SCH' AND PRI_ID in "
+				+ "(Select PRI_ID from wf_payload_parameters where value='" + orderId + "')";
+	}
+
+	@AfterMethod
+	private static void postMethodToChangeEmail() {
+		// change the email id back to normal
+		MVNOProjectSpecific.updateEmailIdInCust_customersTable(newEmailId, customerNumber);
+		System.out.println(String.format("Email Adress is changed to original: %s", newEmailId));
+
+	}
+
+}

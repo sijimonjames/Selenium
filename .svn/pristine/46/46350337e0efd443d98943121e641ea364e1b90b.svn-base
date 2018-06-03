@@ -1,0 +1,18 @@
+package com.acneuro.test.automation.uk_workflow_tests;
+
+import java.sql.ResultSet;
+
+import org.apache.poi.util.SystemOutLogger;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.libraries.OracleJdbcConnection;
+import com.acneuro.test.automation.libraries.QueryUtils;
+import com.acneuro.test.automation.libraries.UKProjectSpecific;
+
+public class Testcase1 {
+
+	
+	String uniqueEmail = UKProjectSpecific.uniqueEmailIdForUkCustomer();
+
+	
+}

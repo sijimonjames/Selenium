@@ -1,0 +1,47 @@
+package com.acneuro.test.automation.libraries;
+
+import java.util.concurrent.TimeUnit;
+
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.ie.InternetExplorerDriver;
+import org.testng.Reporter;
+import org.testng.annotations.BeforeMethod;
+
+public class ConfigLib {
+
+	// opening the required browser and page
+	public static WebDriver driver;
+
+	@BeforeMethod
+	public void preCondition() {
+		String configFile = Constant.DEFAULT_TESTDATA_LOCATION + "/" + Constant.configFileName;
+		// System.out.println(configFile);
+		String browserType = Generic.getCellValue(configFile, "Browser_selection", 0, 1);
+		Reporter.log("Tests are Running on: " + browserType, true);
+
+		if (browserType.equals("Internet Explorer")) {
+			System.setProperty("webdriver.ie.driver", Constant.IE_Driver_Path);
+			driver = new InternetExplorerDriver();
+			Reporter.log("Opening Internet Explorer", true);
+		} else if (browserType.equals("Google Chrome")) {
+			System.setProperty("webdriver.chrome.driver", Constant.Chrome_Driver_Path);
+			driver = new ChromeDriver();
+			Reporter.log("Opening Google Chrome", true);
+		} else {
+			driver = new FirefoxDriver();
+			Reporter.log("Opening Mozilla FireFox", true);
+		}
+		// to maximize the opening browser window
+		driver.manage().window().maximize();
+
+		// implicit wait to complete each browser action
+		driver.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
+	}
+
+	public static void postCondition() {
+		driver.quit();
+		System.out.println("Webpage is closed down");
+	}
+}

@@ -1,0 +1,94 @@
+package com.acneuro.test.automation.miscellaneous;
+
+import java.util.Scanner;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.mvno_project_library.Country;
+import com.acneuro.test.automation.mvno_project_library.MVNO_DunningWorkflowSpecific;
+
+public class CancelCurrentPaymentMthodDiseMP {
+	private static String customeridentifier = null;
+	private static String customerNumber = null;
+	private static String diseAccountNumber = null;
+	private static String emailId = null;
+	private static String payment_type = null;
+
+	@Test
+	public void testToGiveRioCodeAndUniqueNumberForManualTest() throws InterruptedException {
+
+		@SuppressWarnings("resource")
+		Scanner user_input = new Scanner(System.in);
+
+		System.out.println("Enter Customer : ");
+		customeridentifier = user_input.next();
+
+		recognizeCustomerDetils();
+
+		MVNO_DunningWorkflowSpecific.getAccountDetails(customeridentifier, "PaymentType",Country.FR.name());
+		System.err.println(String.format("payment type in Dise is %s \n Are you sure to Continue? : ", payment_type));
+		String decision = user_input.next();
+
+		if (decision.equalsIgnoreCase("Yes") || decision.equalsIgnoreCase("Y")) {
+
+			if (payment_type.equalsIgnoreCase("VISA")) {
+				/*
+				 * send request for CC cancellation
+				 */
+				System.out.println("Customer payment type is CC");
+				MVNO_DunningWorkflowSpecific.cancellationOfDirectDebit(diseAccountNumber,Country.FR.name());
+
+			} else if (payment_type.equalsIgnoreCase("DD")) {
+				/*
+				 * send request for DD cancellation
+				 */
+				System.out.println("DD");
+			} else if (payment_type.equalsIgnoreCase("GIRO")) {
+				System.out.println("The payment type is already GIRO, no action required");
+			}
+			Thread.sleep(3000);
+			Assert.assertEquals(MVNO_DunningWorkflowSpecific.getAccountDetails(diseAccountNumber, "PaymentType",Country.FR.name()),
+					"GIRO");
+		} else if ((decision.equalsIgnoreCase("No") || decision.equalsIgnoreCase("N"))) {
+
+			System.out.println("THE ACTION IS ABORTED");
+		}
+	}
+
+	private void recognizeCustomerDetils() {
+
+		if (customeridentifier.startsWith("99")) {
+			/*
+			 * Identified as Dise account number
+			 */
+			System.out.println(customeridentifier + " :You have provided dise account number");
+			diseAccountNumber = customeridentifier;
+		} else if (customeridentifier.startsWith("000")) {
+			/*
+			 * Identified as Customer number, find dise account number
+			 */
+			System.out.println(customeridentifier + " :You have provided customer number");
+			customerNumber = customeridentifier;
+			/*
+			 * find dise account number from customer number
+			 */
+			String queryDiseMPAccountNumber = "";
+			
+
+		} else if (customeridentifier.endsWith("uk") || customeridentifier.endsWith("fr")) {
+			/*
+			 * Identified as Email Address, find dise account number
+			 */
+			System.out.println(customeridentifier + " :You have provided usename (Email id)");
+			emailId = customeridentifier;
+
+			/*
+			 * find dise account number from customer number
+			 */
+
+		} else {
+			System.err.println("Customer is not identified, pls provide valid details");
+			throw new AssertionError();
+		}
+	}
+}

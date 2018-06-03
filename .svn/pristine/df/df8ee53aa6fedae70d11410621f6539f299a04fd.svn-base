@@ -1,0 +1,113 @@
+package com.acneuro.test.automation.france_workflow_tests;
+
+import java.sql.ResultSet;
+
+import org.testng.Assert;
+import org.testng.Reporter;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.db_connection_libraries.DBUtils;
+import com.acneuro.test.automation.db_connection_libraries.OracleJdbcConnection;
+import com.acneuro.test.automation.libraries.ConfigLib;
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.libraries.RestApiAutomation;
+import com.acneuro.test.automation.mvno_project_library.FranceProjectSpecific;
+import com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific;
+
+public class TC_02_FranceCancellationOfOrder {
+
+	public static String orderCreationForExistingCustomer() {
+		// Checking the database for status="RESOLVING_TASKS"(sometimes "NEW")
+		// change this always to "RESOLVING_TASKS"
+
+		FranceProjectSpecific.LoginToMyJoiFranceEnglish();
+		FranceProjectSpecific.selectLibertyOrderFromOurOffer();
+		MVNOProjectSpecific.pricePlanSelection("joiLibertyFR");;
+		FranceProjectSpecific.nanoSimTypeSelection();
+		FranceProjectSpecific.ourOfferPageAddToBasketButton();
+		FranceProjectSpecific.add_to_basket_without_porting();
+		FranceProjectSpecific.checkOutOrder();
+		FranceProjectSpecific.continueToStep3WithoutPorting();
+		FranceProjectSpecific.orderSummaryPageForExitstingCustomer("99999");
+		FranceProjectSpecific.Payment_Datacash(Constant.Card_Type1, Constant.Type1_CC_number, "2018",
+				Constant.Type1_CC_CVV);
+		MVNOProjectSpecific.verifyTitleOfPage("Your JOi Order Confirmation");
+		MVNOProjectSpecific.takeScreenShot("C:/testing/workspace/Screenshots/mvno/Order_Creation.png");
+		String getOrderNumber = MVNOProjectSpecific.getAndVerifyText("//div/article/section/p[2]/strong");
+		String orderNumber = getOrderNumber.substring(1);
+		System.out.println("Order is created successfully!! Your Order number is: " + orderNumber);
+		ConfigLib.driver.quit();
+		return orderNumber;
+	}
+
+	@Test
+	public static void cancellationOfOrder() {
+		String orderNumber = orderCreationForExistingCustomer();
+		System.out.println(orderNumber);
+
+		String orderId = "";
+		// in 'NEW' change the order status to 'RESOLVING_TASLS'
+
+		try {
+			OracleJdbcConnection.crmDatabaseUpdateQuery(DBUtils.queryUpdateOrderStatus(orderNumber));
+			System.out.println("Update Query 1");
+			ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(DBUtils.queryOrderStatus(orderNumber));
+			while (resultSet.next()) {
+				orderId = resultSet.getString("ID");
+				System.out.println(orderId);
+				System.out.println(resultSet.getString("ORD_NUMBER"));
+				System.out.println(resultSet.getString("STATUS"));
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		String taskId = ""; // Need task id to 'resolving_tasks'
+		try {
+			ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(DBUtils.queryTaskId(orderId));
+			while (resultSet.next()) {
+				taskId = resultSet.getString("ID");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		String latestPriId = "";
+		try {
+			ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(DBUtils.querylatestProcessId(orderId));
+			while (resultSet.next()) {
+				latestPriId = resultSet.getString("max(PRI_ID)");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		// RESOLVING_TASKS API signal
+		try {
+			FranceProjectSpecific.resolvingTasksSignal(latestPriId, taskId);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		// here we check if upfront payment action created
+		boolean checkActionUpfrontPayment = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId, "ofUpfrontPaymentWait");
+		Assert.assertTrue(checkActionUpfrontPayment);
+
+		// here we check if upfront payment is finished successfully
+		boolean upfrontPaymentActionIsDone = MVNOProjectSpecific.processUpfrontPayment(orderId);
+		Assert.assertTrue(upfrontPaymentActionIsDone);
+
+		// here we check if shipping signal action is created
+		boolean checkActionmbShipWaiting = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId, "mbShipWaiting");
+		Assert.assertTrue(checkActionmbShipWaiting);
+
+		String ordercanCellationApiBody = RestApiAutomation.orderCancellationSignalApiBody(orderNumber, orderId,
+				"Incomplete Order Cancellation", "Customer");
+		boolean orderCancellation = FranceProjectSpecific.cancellationOfIncompleteOrderInShipWaitingStage(orderId,
+				ordercanCellationApiBody);
+
+		Assert.assertTrue(orderCancellation);
+		FranceProjectSpecific.terminateBillingDuringOrderCancellation(orderId);
+		Reporter.log("Order with Order Number "+orderNumber+" is Cancelled");
+		
+		
+	}
+}

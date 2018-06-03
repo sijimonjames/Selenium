@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="mvno">
+	<test name="customer and Order Creation Tests">
+		<packages>
+			<package
+				name="com.acneuro.test.automation.customer_Account_And_Order_Creation_Tests" />
+		</packages>
+	</test>
+
+</suite> <!-- Suite -->

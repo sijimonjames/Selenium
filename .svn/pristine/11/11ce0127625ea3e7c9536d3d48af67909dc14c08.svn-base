@@ -1,0 +1,123 @@
+package com.acneuro.test.automation.uk_workflow_tests;
+
+import org.testng.Assert;
+import org.testng.Reporter;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.libraries.ConfigLib;
+import com.acneuro.test.automation.libraries.Constant;
+
+import mvno_project_library.MVNOProjectSpecific;
+import mvno_project_library.UKProjectSpecific;
+
+public class TC_05_UKPortOutTests {
+
+	public static String orderCreationForExistingCustomer() {
+		// Checking the database for status="RESOLVING_TASKS"(sometimes "NEW")
+		// change this always to "RESOLVING_TASKS"
+
+		UKProjectSpecific.LoginToUKMyJoiWithLatestEmailID();
+		UKProjectSpecific.selectNeworderFromOurOffer();
+		UKProjectSpecific.Our_Offer_add_to_basket();
+		UKProjectSpecific.addToBasketWithoutPorting();
+		UKProjectSpecific.Check_Out_Order();
+		UKProjectSpecific.continue_step_3();
+		UKProjectSpecific.orderSummaryPageForExitstingCustomer("99999");
+		UKProjectSpecific.Payment_Datacash(Constant.Card_Type1, Constant.Type1_CC_number, "2018",
+				Constant.Type1_CC_CVV);
+		MVNOProjectSpecific.verifyTitleOfPage("Your JOi Order Confirmation");
+		MVNOProjectSpecific.takeScreenShot("C:/testing/workspace/Screenshots/mvno/Order_Creation.png");
+		String getOrderNumber = MVNOProjectSpecific.getAndVerifyText("//div/article/section/p[2]/strong");
+		String orderNumber = getOrderNumber.substring(1);
+		System.out.println("Order is created successfully!! Your Order number is: " + orderNumber);
+		ConfigLib.driver.quit();
+		return orderNumber;
+	}
+
+	public static String activationOfNewOrder() {
+
+		String orderId = "";
+		String orderNumber = "";
+
+		orderNumber = orderCreationForExistingCustomer();
+		System.out.println(String.format("The new Oder number is %s", orderNumber));
+
+		// if order status is 'NEW' in database change to 'RESOLVING_TASKS'
+
+		/*
+		 * Fail the test if Order is in any other status other than resolving
+		 * tasks
+		 */
+
+		// verify for resolving tasks
+		Assert.assertTrue(MVNOProjectSpecific.CheckStatusOfOrder(orderNumber));
+
+		// RESOLVING_TASKS API signal
+		orderId = MVNOProjectSpecific.processResolvingTasksSignal(orderNumber);
+
+		// here we check if upfront payment action created
+		boolean checkActionUpfrontPayment = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId,
+				"ofUpfrontPaymentWait");
+		Assert.assertTrue(checkActionUpfrontPayment);
+
+		// here we check if upfront payment is finished successfully
+		boolean upfrontPaymentActionIsDone = UKProjectSpecific.processUpfrontPayment(orderId);
+		Assert.assertTrue(upfrontPaymentActionIsDone);
+
+		// here we check if shipping signal action is created
+		boolean checkActionmbShipWaiting = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId, "mbShipWaiting");
+		Assert.assertTrue(checkActionmbShipWaiting);
+
+		// here we check if upfront payment is finished successfully
+		boolean mbShipWaitingIsDone = UKProjectSpecific.processShipWait(orderId, "mbShipWaiting");
+		Assert.assertTrue(mbShipWaitingIsDone);
+
+		// here we check if SIM activation action is created
+		boolean checkActionmbSimActivation = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId,
+				"mbSimActivation");
+		Assert.assertTrue(checkActionmbSimActivation);
+
+		// If SIM activation action present activate the SIM in MYJOi
+		UKProjectSpecific.LoginToUKMyJoiWithLatestEmailID();
+		UKProjectSpecific.ActivateSimAfterLogin();
+		Reporter.log("SIM activation is done using MyJOi", true);
+
+		boolean checkActionmbProvisionWait = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId,
+				"mbProvisionWait");
+		Assert.assertTrue(checkActionmbProvisionWait);
+
+		UKProjectSpecific.provisioningDuringActivationOfOrders(orderId);
+
+		return orderId;
+
+	}
+
+	@Test(priority = 1)
+	public static void portOutOfUKCustomer() {
+
+		String orderID = "";
+
+		// GET THE ACTUAL ORDER ID BY ACTIVATING THE ORDER
+		orderID = activationOfNewOrder();
+		UKProjectSpecific.LoginToUKMyJoiWithLatestEmailID();
+		UKProjectSpecific.ukPortOutFromManageSettings();
+
+		// AFTER SUBMIT A PROCESS 'pONumPos' WILL BE INITIATED, CHECK THAT
+		// REFERENCE ID IN NUMPOS IS PROCESS ID IN CUES
+
+		boolean numposStart = MVNOProjectSpecific.checkIfActionExistsForOrder(orderID, "pONumPos");
+		Assert.assertTrue(numposStart);
+
+		// SEND A REST API REQUEST TO START THE PORT-OUT
+		UKProjectSpecific.ukNumberPortingFinish(orderID);
+
+		// THIS SHOULD BE UPDATED AND TERMINATE THE SUBSCRIPTION
+		// Just check for 'pONumPosFinish'
+		boolean numposFinish = MVNOProjectSpecific.checkIfActionExistsForOrder(orderID, "pONumPosFinish");
+		Assert.assertTrue(numposFinish);
+		// CCHECK FOR 'pONumPosFinish' IS FINISHED IN SUCCESS
+		boolean numposSuccess = UKProjectSpecific.checkForPortOutIsDone(orderID);
+		Assert.assertTrue(numposSuccess);
+	}
+
+}

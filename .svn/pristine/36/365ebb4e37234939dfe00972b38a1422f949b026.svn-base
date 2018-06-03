@@ -1,0 +1,65 @@
+package com.acneuro.test.automation.xmlParser;
+
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
+
+/**
+ * @author sijames
+ * @Library: xml parser
+ */
+@XmlRootElement
+public class CueRequest {
+
+	String name;
+	String age;
+	int id;
+
+	/**
+	 * @return the name
+	 */
+	public String getName() {
+		return name;
+	}
+
+	/**
+	 * @param name
+	 *            the name to set
+	 */
+	@XmlElement
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	/**
+	 * @return the age
+	 */
+	public String getAge() {
+		return age;
+	}
+
+	/**
+	 * @param age
+	 *            the age to set
+	 */
+	@XmlElement
+	public void setAge(String age) {
+		this.age = "Parameter name=" + age;
+	}
+
+	/**
+	 * @return the id
+	 */
+	public int getId() {
+		return id;
+	}
+
+	/**
+	 * @param id
+	 *            the id to set
+	 */
+	@XmlElement
+	public void setId(int id) {
+		this.id = id;
+	}
+
+}

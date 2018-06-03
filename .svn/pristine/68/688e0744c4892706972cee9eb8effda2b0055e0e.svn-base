@@ -1,0 +1,287 @@
+package com.acneuro.test.automation.mvno_project_library;
+
+import static com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific.scrollDownToView;
+import static java.lang.Thread.sleep;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.concurrent.TimeUnit;
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.firefox.FirefoxDriver;
+import org.testng.Assert;
+import org.testng.Reporter;
+
+import com.acneuro.test.automation.db_connection_libraries.OracleDBUtils;
+import com.acneuro.test.automation.db_connection_libraries.OracleJdbcConnection;
+import com.acneuro.test.automation.libraries.ConfigLib;
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.libraries.WebServicesAutomationLibrary;
+
+public class MVNO_DunningWorkflowSpecific extends ConfigLib {
+
+	public static String latestCustomerNumberFromCuesWithDirectDebitPending() {
+		String customerId = "";
+		try {
+			String queryCustID = OracleDBUtils.queryCustomerIdWithDirectDebitPendingForFrance();
+			ResultSet getCustId = OracleJdbcConnection.crmDatabaseSelectQuery(queryCustID);
+
+			while (getCustId.next()) {
+				customerId = getCustId.getString("CUST_ID");
+			}
+
+			System.out.println("Cusotmer found with CC active and DD pending");
+			System.out.println("Customer ID is: " + customerId);
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return customerId;
+	}
+
+	public static String findCustomerNumberfromCustomerId(String customerId) {
+		String customerNumber = "";
+		try {
+			String queryCustomerNumber = OracleDBUtils.queryCinProductsWithCustId(customerId);
+			ResultSet getCustomerNumber = OracleJdbcConnection.crmDatabaseSelectQuery(queryCustomerNumber);
+
+			while (getCustomerNumber.next()) {
+				customerNumber = getCustomerNumber.getString("CUSTOMER_NUMBER");
+				System.out.println("Customer Number is: " + customerNumber);
+				Reporter.log("Customer Number: " + customerNumber);
+
+				if (getCustomerNumber.wasNull()) {
+					System.err.println("No active customer found with DD pending, Activate a new customer");
+					throw new AssertionError();
+				}
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return customerNumber;
+	}
+
+	public static boolean verifyDirectDebitActivatedInWildBill(String customerNumber) {
+		String status = "";
+		try {
+			for (int i = 0; i < Constant.DEFAULT_RETRY_COUNT; i++) {
+
+				// verify DD is active in Wildbill
+				String queryWildbillDirectDebitStatus = queryToVerifyDDisActiveInWildBill(customerNumber);
+				ResultSet getDirectDebitStatus = OracleJdbcConnection
+						.wildbillDatabaseSelectQuery(queryWildbillDirectDebitStatus);
+
+				while (getDirectDebitStatus.next()) {
+					String paymentMethod = getDirectDebitStatus.getString("PAY_METHOD");
+					status = getDirectDebitStatus.getString("STATUS");
+
+					if (paymentMethod.equalsIgnoreCase("DIRECT_DEBIT") && status.equalsIgnoreCase("ACTIVE")) {
+						System.out.println("The DDs status is wildbill is ACTIVE");
+						return true;
+					} else {
+						System.err.println("The Status of DD in Wild bill is not as expected, the status is " + status);
+						return false;
+					}
+				}
+				Thread.sleep(Constant.DEFAULT_SLEEP_TIME);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		System.err.println("The Status of DD in Wild bill is not as expected, the status is " + status);
+		return false;
+	}
+
+	public static boolean verifyDirectDebitActivatedInCues(String customerId) {
+
+		String ddStatus = "";
+		String ccStatus = "";
+		try {
+
+			for (int i = 0; i < Constant.DEFAULT_RETRY_COUNT; i++) {
+				// verify DD is active in Wildbill
+				String queryCuesDirectDebitStatus = queryToVerifyDDisActiveInCues(customerId);
+				String queryCuesCreditCardStatus = queryToVerifyCCisInactiveInCues(customerId);
+				ResultSet getDirectDebitStatus = OracleJdbcConnection
+						.crmDatabaseSelectQuery(queryCuesDirectDebitStatus);
+				ResultSet getCreditCardStatus = OracleJdbcConnection.crmDatabaseSelectQuery(queryCuesCreditCardStatus);
+
+				while (getDirectDebitStatus.next()) {
+					ddStatus = getDirectDebitStatus.getString("PAYMENT_STATUS");
+				}
+				while (getCreditCardStatus.next()) {
+					ccStatus = getCreditCardStatus.getString("PAYMENT_STATUS");
+				}
+
+				if (ddStatus.equalsIgnoreCase("ACTIVE") && ccStatus.equalsIgnoreCase("INACTIVE")) {
+					System.out.println("The DDs status is CRM is ACTIVE and CC is Inactive");
+					Reporter.log("The DDs status is CRM is ACTIVE and CC is Inactive");
+					return true;
+				}
+				if (!ddStatus.equalsIgnoreCase("ACTIVE")) {
+					System.out.println(String.format("The DDs status is %s", ddStatus));
+					return false;
+				}
+				Thread.sleep(Constant.DEFAULT_SLEEP_TIME);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public static void runWorkerForDDActivation() throws InterruptedException {
+		driver = new FirefoxDriver();
+		// implicit wait to complete each browser action
+		driver.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
+		driver.get(Constant.DDMANDATEWorkerUrl);
+		// to maximize the opening browser window
+		driver.manage().window().maximize();
+		// Trigger worker 'test FR UMR'
+		WebElement workerUpdateDirectDebit = driver
+				.findElement(By.xpath("//*[@id='oszApKQssBS3BXXF2q+DAE+X4Us=']/div[2]/a[1]"));
+		scrollDownToView(workerUpdateDirectDebit);
+		workerUpdateDirectDebit.click();
+		sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+		System.out.println("The DD activation worker is triggered");
+		driver.quit();
+	}
+
+	// Send a request to get payment details
+	public static String getAccountDetails(String diseAccountNumber, String nodeValue) {
+
+		String getAccountDetails = WebServicesAutomationLibrary.requestToDiseToGetAccountDetails(diseAccountNumber);
+		String nodeValueResult = WebServicesAutomationLibrary.getResponseValueFromDise(getAccountDetails, nodeValue);
+		return nodeValueResult;
+	}
+
+	// Send a request to get payment details
+	private static void cancellationOfPaymentMethod(String externalAccountID, String diseAccountNumber,
+			String payment_method) {
+		String requestToCancelPaymentMethod = null;
+		// get 'LAST AMENDED DATE' from dise
+		String disePaymentRequest = WebServicesAutomationLibrary.requestToDiseToGetAccountDetails(diseAccountNumber);
+
+		String ResultLastAmendedDate = WebServicesAutomationLibrary.getResponseValueFromDise(disePaymentRequest,
+				"LastAmendedDate");
+		System.out.println("Last amended date: " + ResultLastAmendedDate);
+
+		if (payment_method.equalsIgnoreCase("DD")) {
+
+			requestToCancelPaymentMethod = WebServicesAutomationLibrary
+					.requestToDiseToUpdatePaymentMethodForDirectDebit(externalAccountID, diseAccountNumber,
+							ResultLastAmendedDate);
+			System.out.println("REQUEST TO CANCEL DD-------- " + requestToCancelPaymentMethod);
+		} else if (payment_method.equalsIgnoreCase("CC")) {
+			requestToCancelPaymentMethod = WebServicesAutomationLibrary.requestToDiseToUpdatePaymentMethodForCreditCard(
+					externalAccountID, diseAccountNumber, ResultLastAmendedDate);
+			System.out.println("REQUEST TO CANCEL CC-------- " + requestToCancelPaymentMethod);
+		}
+		// modify external reference id to verify
+
+		String veryfyExternalReference = String.format("ACC-ID:%s", externalAccountID);
+		String ActualExternalReference = WebServicesAutomationLibrary
+				.getResponseValueFromDise(requestToCancelPaymentMethod, "ExternalReference");
+		System.out.println("actual external reference" + ActualExternalReference);
+		Assert.assertEquals(ActualExternalReference, veryfyExternalReference);
+	}
+
+	public static void cancellationOfDirectDebit(String externalAccountID, String diseAccountNumber) {
+		cancellationOfPaymentMethod(externalAccountID, diseAccountNumber, "DD");
+	}
+
+	public static void cancellationOfCreditCard(String externalAccountID, String diseAccountNumber) {
+		cancellationOfPaymentMethod(externalAccountID, diseAccountNumber, "CC");
+	}
+
+	public static boolean verifyDirectDebitRejectionInWildBill(String customerNumber, String rejectionReason) {
+		String status = "";
+		try {
+			for (int i = 0; i < Constant.DEFAULT_RETRY_COUNT; i++) {
+				// verify DD is active in Wildbill
+				String queryWildbillDirectDebitStatus = queryToVerifyDDisActiveInWildBill(customerNumber);
+				ResultSet getDirectDebitStatus = OracleJdbcConnection
+						.wildbillDatabaseSelectQuery(queryWildbillDirectDebitStatus);
+				while (getDirectDebitStatus.next()) {
+					String paymentMethod = getDirectDebitStatus.getString("PAY_METHOD");
+					status = getDirectDebitStatus.getString("STATUS");
+
+					if (paymentMethod.equalsIgnoreCase("DIRECT_DEBIT") && rejectionReason.equalsIgnoreCase("NON-FATAL")
+							&& status.equalsIgnoreCase("FAILED")) {
+						System.out.println(String.format("The DDs status is wildbill is %s", status));
+						return true;
+					}
+					if (paymentMethod.equalsIgnoreCase("DIRECT_DEBIT") && rejectionReason.equalsIgnoreCase("FATAL")
+							&& status.equalsIgnoreCase("FATAL_FAILURE")) {
+						System.out.println(String.format("The DDs status is wildbill is %s", status));
+						return true;
+					} else {
+						System.err.println("The Status of DD in Wild bill is not as expected, the status is " + status);
+						return false;
+					}
+				}
+				Thread.sleep(Constant.DEFAULT_SLEEP_TIME);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		System.err.println("The Status of DD in Wild bill is not as expected, the status is " + status);
+		return false;
+	}
+
+	public static void runWorkerDuePayRequest() throws InterruptedException {
+		driver = new FirefoxDriver();
+		// implicit wait to complete each browser action
+		driver.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
+		driver.get(Constant.billsrvWorkerUrl);
+		// to maximize the opening browser window
+		driver.manage().window().maximize();
+		// Trigger worker 'DuePayReqJob'
+		WebElement workerDuePay = driver.findElement(By.xpath("//*[@id='22sbwWmFZP/SIYbqGKQ5pOzPRcI=']/div[2]/a[1]"));
+		scrollDownToView(workerDuePay);
+		workerDuePay.click();
+		sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+		System.out.println("The DD activation worker is triggered");
+		driver.quit();
+	}
+
+	public static void runWorkerCCRetryOK() throws InterruptedException {
+		driver = new FirefoxDriver();
+		// implicit wait to complete each browser action
+		driver.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
+		driver.get(Constant.billsrvWorkerUrl);
+		// to maximize the opening browser window
+		driver.manage().window().maximize();
+		// Trigger worker 'creditCardRetriedOkReqJob'
+		WebElement workerCCRetryOK = driver
+				.findElement(By.xpath("//*[@id='h1KvZkmwFzS8ZQgA8SlhrV/aLBw=']/div[2]/a[1]"));
+		scrollDownToView(workerCCRetryOK);
+		workerCCRetryOK.click();
+		sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+		System.out.println("The DD activation worker is triggered");
+		driver.quit();
+	}
+
+	public static String queryToVerifyDDisActiveInWildBill(String custNumber) {
+		return "SELECT * FROM BS_PAYMENTS where ID = (SELECT MAX(ID) FROM BS_PAYMENTS where PAY_METHOD = 'DIRECT_DEBIT' AND CUST_NBR='"
+				+ custNumber + "')";
+	}
+
+	public static String queryToVerifyDDisActiveInCues(String custId) {
+		return "SELECT * FROM CUST_DIRECT_DEBIT_DETAILS WHERE ID = (SELECT MAX(ID) FROM CUST_DIRECT_DEBIT_DETAILS where CUST_ID = '"
+				+ custId + "')";
+	}
+
+	public static String queryToVerifyCCisInactiveInCues(String custId) {
+		return "SELECT * FROM CUST_CARD_DETAILS WHERE ID = (SELECT MAX(ID) FROM CUST_CARD_DETAILS WHERE CUST_ID = '"
+				+ custId + "')";
+	}
+
+	// get external account number(ACCOUNT_NBR) and BILL_SYS_REF
+	public static String queryBSaccountsWithCustomerNumber(String customerNumber) {
+		return "select * from BS_ACCOUNTS where CUST_NBR = '" + customerNumber + "'";
+
+	}
+
+}

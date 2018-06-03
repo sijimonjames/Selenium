@@ -1,0 +1,113 @@
+package com.acneuro.test.automation.cuet_reload_commands_tests;
+
+import java.sql.ResultSet;
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Actions;
+import org.testng.Assert;
+import org.testng.Reporter;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.db_connection_libraries.DBUtils;
+import com.acneuro.test.automation.db_connection_libraries.OracleJdbcConnection;
+import com.acneuro.test.automation.libraries.ConfigLib;
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific;
+
+public class TC_01_VerifyLoginToCuet_Reload extends ConfigLib {
+
+	@Test
+	public static void Login_to_CUET_R() {
+		String customerNumber = "unknown";
+		String EmailAddress = "unknown";
+		String queryCustCustomers = "";
+
+		// Find the latest active customer
+		try {
+			String queryCinProducts = DBUtils.queryFRCinProductTableWithMaxCinProductnumber();
+
+			ResultSet resultCinProducts = OracleJdbcConnection.crmDatabaseSelectQuery(queryCinProducts);
+
+			while (resultCinProducts.next()) {
+
+				customerNumber = resultCinProducts.getString("CUSTOMER_NUMBER");
+				System.out.println("Customer Number: " + customerNumber);
+			}
+
+			// Get the URL of CUET-R
+			driver.get("http://ams-uatalfred-01/index.html");
+
+			Thread.sleep(5000);
+			// Enter the username and password for the CUET-R
+			driver.findElement(By.xpath("//*[@id='loginusername-inputEl']")).sendKeys(Constant.COMMON_USERNAME);
+			driver.findElement(By.xpath("//*[@id='loginpassword-inputEl']")).sendKeys(Constant.COMMON_PASSWORD);
+			Thread.sleep(2000);
+
+			// Click on 'Login' button
+			driver.findElement(
+					By.cssSelector("[style*='back'][class*='x-btn-icon-el x-btn-icon-el-default-toolbar-small']"))
+					.click();
+			// Verify successful Login by verifying CUET tab
+			// Check the 'CUET' button
+			driver.findElement(By.xpath("//*[@id='cuetbut-btnIconEl']")).click();
+			// Search & Select
+			driver.findElement(By.xpath("//*[@id='searchfieldcus-inputEl']")).sendKeys(customerNumber);
+
+			Thread.sleep(2000);
+
+			driver.findElement(By.cssSelector("a[tabindex='0'][style*='width: 34px;']")).click();
+
+			Actions action = new Actions(driver);
+			WebElement element = driver.findElement(By.cssSelector("img[src*='images/countriescodespng/']"));
+			action.doubleClick(element).perform();
+			Thread.sleep(5000);
+			// driver.findElements(By.xpath("//*[@id='tableview-1038-record-173']/tbody/tr/td[7]/div"));
+			// verify the CustomerNumber of the Customer
+
+			String expectedText = String.format("Customer:Number:%s", customerNumber);
+			String actualText = "";
+
+			actualText = MVNOProjectSpecific.getAndVerifyText("//table/tbody/tr/td[1]/p/strong[4]");
+
+			System.out.println("Actual text: " + actualText);
+
+			Reporter.log("Customer number: " + customerNumber);
+			Reporter.log("Actual text: " + actualText);
+
+			Assert.assertEquals(actualText, expectedText);
+
+			// Verify the Email Address of the Customer
+
+			queryCustCustomers = DBUtils.queryLatestExistingCustomerEmailId(customerNumber);
+
+			ResultSet resultCustCustomers = OracleJdbcConnection.crmDatabaseSelectQuery(queryCustCustomers);
+
+			while (resultCustCustomers.next()) {
+
+				EmailAddress = resultCustCustomers.getString("EMAIL_ADDRESS");
+				System.out.println("Email_ID: " + EmailAddress);
+			}
+
+			String getsomething = driver.findElement(By.xpath("//table/tbody/tr/td[1]/p")).getText();
+			String getSomethinginOneLine = getsomething.replaceAll("\\s+", " ");
+			Assert.assertTrue(getSomethinginOneLine.contains(EmailAddress));
+			Reporter.log("EMAIL_ADDRESS :" + EmailAddress);
+
+			Thread.sleep(3000);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	@AfterMethod
+	public static void postCondition() {
+		driver.quit();
+		System.err.println("Webpage is closed down \n"
+				+ "Rest of the Cuet-R Tests will be done with CUET-R Commands");
+		Reporter.log("All other Cuet-R Tests will be done with CUET-R Commands");
+
+	}
+}

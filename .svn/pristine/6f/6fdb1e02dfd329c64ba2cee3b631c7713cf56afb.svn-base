@@ -1,0 +1,51 @@
+package com.acneuro.test.automation.uk_workflow_tests;
+
+import java.sql.ResultSet;
+
+import org.testng.Assert;
+import org.testng.Reporter;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.libraries.FranceProjectSpecific;
+import com.acneuro.test.automation.libraries.OracleJdbcConnection;
+import com.acneuro.test.automation.libraries.QueryUtils;
+
+public class Testcase1 {
+
+	@Test
+
+	public void test() {
+
+		String processId = "";
+		String msisdn = "0651157164";
+		ResultSet queryProcessId = OracleJdbcConnection
+				.numposDatabaseSelectQuery(QueryUtils.queryPortOutProcessIdfromNumposDB(msisdn));
+		try {
+			while (queryProcessId.next()) {
+
+				processId = queryProcessId.getString("REFERENCE_ID");
+				System.out.println(String.format("The process id of portout process is %s", processId));
+				if (queryProcessId.wasNull()) {
+
+					Assert.assertEquals(processId, "1");
+				} else {
+					boolean provAction = FranceProjectSpecific.checkIfActionExistsWithProcessId(processId, "pOProv");
+					Assert.assertTrue(provAction);
+				}
+
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		// If 'pOProv' is in error, change to 'WAI' status
+		// send a provisioning request to finish 'POprovisioningSignal'
+		// check for the action "pONumPosFinish" finished in success
+		boolean portOutProvisioning = FranceProjectSpecific.portOutProvisioningIsDone(processId);
+		Assert.assertTrue(portOutProvisioning);
+		System.out.println("Provisioning is done");
+		
+		boolean portOutFinish = FranceProjectSpecific.processPortOutFinishIsDone(processId);
+		Assert.assertTrue(portOutFinish);
+		Reporter.log(String.format("The customer with msisdn %s is ported out", msisdn));
+	}
+}

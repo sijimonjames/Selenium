@@ -1,0 +1,183 @@
+package com.acneuro.test.automation.cuet_reload_commands_tests;
+
+import static com.acneuro.test.automation.db_connection_libraries.DBUtils.*;
+import java.sql.ResultSet;
+
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.db_connection_libraries.OracleJdbcConnection;
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.libraries.RestApiAutomation;
+import com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific;
+
+/*
+ * @Author: SIJIMON JAMES
+ * Test: Block and unblock Internet using Cuet - R for FR
+ */
+
+public class TC_03_FR_BlockOrUnblockInternet_Cuet_R {
+
+	private static String myJoiNumber = "to be found";
+	private static String processId = "unknown";
+	private static String cinProductId = "to be found";
+	private static String customerNumber = "to be found";
+
+	@Test(priority = 1)
+	public static void test_1_Block_Or_Unblock_Internet() throws InterruptedException {
+		processInternetBlockOrUnblock();
+		Assert.assertTrue(processsDataTariffAction());
+		Thread.sleep(5000);
+		
+	}
+
+	@Test(priority = 2)
+	public static void test_2_Block_Or_Unblock_Internet() {
+		processInternetBlockOrUnblock();
+		Assert.assertTrue(processsDataTariffAction());
+	}
+
+	public static void processInternetBlockOrUnblock() {
+
+		String cinProductNumber = "";
+		String statusOfInternet = "";
+
+		try {
+			// FINDING CIN PRODUCT TABLE DETAILS
+			ResultSet getCinProductTable = OracleJdbcConnection
+					.crmDatabaseSelectQuery(queryFRCinProductTableWithMaxCinProductnumber());
+			while (getCinProductTable.next()) {
+				cinProductId = getCinProductTable.getString("ID");
+				customerNumber = getCinProductTable.getString("CUSTOMER_NUMBER");
+				myJoiNumber = getCinProductTable.getString("ATTRIBUTE1");
+				System.out.println("cinProductNumber: "+cinProductNumber);
+				System.out.println("cinProductId: "+cinProductId);
+				System.out.println("customer Number: "+customerNumber);
+			}
+			// SEARCHING STATUS OF INTERNET IN CIN PRODUCT MBSUB
+			ResultSet getStatusOfInternat = OracleJdbcConnection
+					.crmDatabaseSelectQuery(queryCinProductMBSUBtableDetails(cinProductId));
+			while (getStatusOfInternat.next()) {
+				statusOfInternet = getStatusOfInternat.getString("BLOCKING_INTERNET");
+			}
+			if (statusOfInternet.equalsIgnoreCase("AED")) {
+				System.err.println("The status of Internet is blocked, unblocking now using Cuet Command");
+				// UNBLOCK INTERNET USING CURT - R
+				String requestUnblockInternet = RestApiAutomation.requestToUnblockInternet(myJoiNumber, cinProductId);
+				System.out.println(requestUnblockInternet);
+				RestApiAutomation.httpPostTest(Constant.CIN_EXECUTE, requestUnblockInternet);
+
+			} else if ((statusOfInternet.equalsIgnoreCase("DED"))) {
+				System.err.println("The status of Internet is not blocked, blocking now using Cuet Command");
+				// BLOCK INTERNET USING CURT - R
+				String requestBlockInternet = RestApiAutomation.requestToBlockInternet(myJoiNumber, cinProductId);
+				System.out.println(requestBlockInternet);
+				RestApiAutomation.httpPostTest(Constant.CIN_EXECUTE, requestBlockInternet);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static boolean processsDataTariffAction() {
+
+		String actionName = "";
+		String status = "";
+		String result = "";
+
+		try {
+			System.out.println(cinProductId);
+			// GET PROCESS ID
+			Assert.assertTrue(cueRequestedCommandsTableForOpenCommands());
+
+			// check for ERROR_PROVISIONING_RES
+			boolean mbModifyDataTrafficAction = MVNOProjectSpecific.checkIfActionExistsWithProcessId(processId,
+					"mbModifyDataTrafficAction");
+			Assert.assertTrue(mbModifyDataTrafficAction);
+			ResultSet getActionInstances = OracleJdbcConnection.crmDatabaseSelectQuery(
+					queryActionInstanceWithProcessIdAndActionName(processId, "mbModifyDataTrafficAction"));
+			while (getActionInstances.next())
+
+			{
+				actionName = getActionInstances.getString("NAME");
+				status = getActionInstances.getString("STATUS");
+				result = getActionInstances.getString("RESULT");
+				if ("mbModifyDataTrafficAction".equals(actionName) && "FIN".equals(status) && "ERROR".equals(result)) {
+					Assert.assertTrue(MVNOProjectSpecific.checkIfActionExistsWithProcessId(processId,
+							"MBDataFailureUserTaskAction"));
+				}
+			}
+			for (int i = 0; i < Constant.DEFAULT_RETRY_COUNT; i++) {
+				ResultSet getActionInstancesforUserTask = OracleJdbcConnection.crmDatabaseSelectQuery(
+						queryActionInstanceWithProcessIdAndActionName(processId, "MBDataFailureUserTaskAction"));
+
+				while (getActionInstancesforUserTask.next()) {
+
+					actionName = getActionInstancesforUserTask.getString("NAME");
+					status = getActionInstancesforUserTask.getString("STATUS");
+					result = getActionInstancesforUserTask.getString("RESULT");
+
+					if ("MBDataFailureUserTaskAction".equals(actionName) && "WAI".equals(status)) {
+						System.out.println("MBDataFailureUserTaskAction is in WAI status");
+
+						// Create and send api request
+						String createErrorResAPI = RestApiAutomation.requestForERROR_PROVISIONING_RES(myJoiNumber,
+								processId, cinProductId);
+						System.out.println(createErrorResAPI);
+						RestApiAutomation.httpPostTest(Constant.CIN_EXECUTE, createErrorResAPI);
+						Thread.sleep(5000);
+					}
+					if ("MBDataFailureUserTaskAction".equals(actionName) && "FIN".equals(status)
+							&& "SKIP_PROVISIONING".equals(result)) {
+						System.out.println("MBDataFailureUserTaskAction action is finished");
+						return true;
+					}
+					if ("MBDataFailureUserTaskAction".equals(actionName) && "FIN".equals(status)
+							&& "ERROR".equals(result)) {
+						System.err.println("MBDataFailureUserTaskAction action finished in Error");
+						return false;
+					}
+					if ("MBDataFailureUserTaskAction".equals(actionName) && "ERR".equals(status)) {
+						System.err.println("MBDataFailureUserTaskAction action finished in Error");
+						return false;
+					}
+					Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+				}
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+
+	}
+
+	public static boolean cueRequestedCommandsTableForOpenCommands() {
+
+		// GET PROCESS ID
+		try {
+			for (int i = 0; i < 5; i++) {
+				System.out.println("CHECKING FOR THE PROCESS ID");
+
+				String queryCues_Commands = querySelectProcessIdFromCUE_COMMANDAndCIN_PRODUCT("ERROR_PROVISIONING_RES",
+						myJoiNumber, "OPEN");
+				ResultSet getCueCommanddetails = OracleJdbcConnection.crmDatabaseSelectQuery(queryCues_Commands);
+				while (getCueCommanddetails.next()) {
+
+					processId = getCueCommanddetails.getString("PROCESS_ID");
+
+					if (!getCueCommanddetails.wasNull()) {
+						System.out.println("PROCESS ID: " + processId);
+
+						return true;
+					}
+				}
+				Thread.sleep(3000);
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+}

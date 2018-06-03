@@ -1,0 +1,469 @@
+package com.acneuro.test.automation.libraries;
+
+import static com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific.dateToString;
+
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.StringReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Date;
+
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathFactory;
+
+import org.apache.commons.io.IOUtils;
+import org.w3c.dom.Document;
+import org.xml.sax.InputSource;
+
+import com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific;
+
+public class RestApiAutomation {
+
+	public static Boolean httpPostTest(String Url, String request) {
+
+		HttpURLConnection httpConn = null;
+		try {
+			URL url = new URL(Url);
+			httpConn = (HttpURLConnection) url.openConnection();
+			httpConn.setConnectTimeout(10000);
+			httpConn.setDoOutput(true);
+			httpConn.setRequestMethod("POST");
+			httpConn.setRequestProperty("Content-Type", "application/xml");
+			OutputStream os = httpConn.getOutputStream();
+			os.write(request.toString().getBytes());
+			os.flush();
+
+			if (httpConn.getResponseCode() != HttpURLConnection.HTTP_CREATED
+					&& httpConn.getResponseCode() != HttpURLConnection.HTTP_OK) {
+				ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+				InputStream input = httpConn.getErrorStream();
+				IOUtils.copy(input, buffer);
+				String errorMessage = new String(buffer.toByteArray());
+				System.out.println(
+						"Failed : HTTP error code : " + httpConn.getResponseCode() + " errorMessage:" + errorMessage);
+			}
+
+			BufferedReader br = new BufferedReader(new InputStreamReader((httpConn.getInputStream())));
+			String response = IOUtils.toString(br);
+			System.out.println(response);
+
+		} catch (Exception ex) {
+			ex.printStackTrace();
+			return false;
+		} finally {
+			try {
+				httpConn.disconnect();
+			} catch (Exception ex) {
+				ex.printStackTrace();
+			}
+		}
+
+		return false;
+
+	}
+
+	public static String httpPostTest_Latest(String Url, String request) {
+
+		HttpURLConnection httpConn = null;
+		String xmlString = null;
+
+		try {
+			URL url = new URL(Url);
+
+			httpConn = (HttpURLConnection) url.openConnection();
+
+			httpConn.setConnectTimeout(10000);
+			httpConn.setDoOutput(true);
+			httpConn.setRequestMethod("POST");
+			httpConn.setRequestProperty("Content-Type", "application/xml");
+			OutputStream os = httpConn.getOutputStream();
+			os.write(request.toString().getBytes());
+			os.flush();
+
+			if (httpConn.getResponseCode() != HttpURLConnection.HTTP_CREATED
+					&& httpConn.getResponseCode() != HttpURLConnection.HTTP_OK) {
+				ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+				InputStream input = httpConn.getErrorStream();
+				IOUtils.copy(input, buffer);
+				String errorMessage = new String(buffer.toByteArray());
+				System.err.println("Failed : HTTP error code : " + httpConn.getResponseCode() + "\n" + " errorMessage:"
+						+ errorMessage);
+			}
+
+			BufferedReader br = new BufferedReader(new InputStreamReader((httpConn.getInputStream())));
+
+			xmlString = IOUtils.toString(br);
+
+			System.out.println(xmlString);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		return xmlString;
+	}
+
+	public static String getSpecificValueFromRestResponse(String xmlString, String nodeXpath) {
+
+		String nodeValue = null;
+		try {
+			XPathFactory xpathFactory = XPathFactory.newInstance();
+			XPath xpath = xpathFactory.newXPath();
+			InputSource source = new InputSource(new StringReader(xmlString));
+			Document doc = (Document) xpath.evaluate("/", source, XPathConstants.NODE);
+			nodeValue = xpath.evaluate(nodeXpath, doc);
+			System.out.println("actual value:= " + nodeValue);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return nodeValue;
+	}
+
+	public static String resolvingTasksApiBody(String processId, String taskId) {
+		return "<CueRequest> <Parameters> <Parameter name=\"processId\">" + processId + "</Parameter> "
+				+ "<Parameter name=\"command\">orderTaskCuesSignal</Parameter> <Parameter name=\"taskId\">" + taskId
+				+ "</Parameter> <Parameter name=\"taskResult\">override</Parameter> "
+				+ "<Parameter name=\"comments\">Updated Incomplete order task</Parameter> "
+				+ "<Parameter name=\"resolvedBy\">asasidha</Parameter> </Parameters> </CueRequest>";
+	}
+
+	public static String shippingSignalApiBody(String ICCID, String processId) {
+		return "<CueRequest> <Parameters> <Parameter name=\"processId\">" + processId + "</Parameter>"
+				+ "<Parameter name=\"command\">shipFinalSignal</Parameter> <Parameter name=\"iccid\">" + ICCID
+				+ "</Parameter> <Parameter name=\"result\">PROCESSED</Parameter>" + "</Parameters> </CueRequest>";
+	}
+
+	// MBprovisioningSignal
+	public static String provisioningSuccessSignalApiBody(String processId, String provisioningCommand) {
+		return "<CueRequest> <Parameters> <Parameter name=\"processId\">" + processId + "</Parameter> "
+				+ "<Parameter name=\"command\">" + provisioningCommand + "</Parameter> "
+				+ "<Parameter name=\"result\">PROCESSED</Parameter> </Parameters> </CueRequest>";
+	}
+
+	public static String orderCancellationSignalApiBody(String orderNumber, String orderId,
+			String reasonForCancellation, String initiatorOfCancelaltion) {
+		return "<CommandRequest><Parameters>" + "<Parameter name=\"commandName\">CANCEL_ORDER</Parameter>"
+				+ "<Parameter name=\"order\">" + orderNumber + "</Parameter><Parameter name=\"orderid\">" + orderId
+				+ "</Parameter>" + "<Parameter name=\"id\">" + orderId
+				+ "</Parameter><Parameter name=\"reasonOfCancellation\">" + reasonForCancellation + "</Parameter>"
+				+ "<Parameter name=\"initiator\">" + initiatorOfCancelaltion + "</Parameter>"
+				+ "<Parameter name=\"doneBy\">sijames</Parameter>"
+				+ "<Parameter name=\"comment\">No Comments</Parameter>" + "</Parameters></CommandRequest>";
+	}
+
+	public static String orderCancellationSignalApiBodyWithIncompleteOrderStatus(String orderNumber, String orderId,
+			String reasonForCancellation, String initiatorOfCancelaltion) {
+		return "<CommandRequest><Parameters>" + "<Parameter name=\"commandName\">CANCEL_ORDER</Parameter>"
+				+ "<Parameter name=\"order\">" + orderNumber + "</Parameter><Parameter name=\"orderid\">" + orderId
+				+ "</Parameter>" + "<Parameter name=\"id\">" + orderId
+				+ "</Parameter><Parameter name=\"reasonOfCancellation\">" + reasonForCancellation + "</Parameter>"
+				+ "<Parameter name=\"initiator\">" + initiatorOfCancelaltion + "</Parameter>"
+				+ "<Parameter name=\"doneBy\">sijames</Parameter>"
+				+ "<Parameter name=\"comment\">No Comments</Parameter>" + "</Parameters></CommandRequest>";
+	}
+
+	public static String portInEligibilityCheckNumposeResponse(String date, String portinNumber, String rioCode) {
+		// porting date may be changed
+		return "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+				+ "<env:Envelope xmlns:env=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+				+ "<env:Header xmlns:work=\"http://bea.com/2004/06/soap/workarea/\">"
+				+ "<work:WorkContext xmlns:wsu=\"http://schemas.xmlsoap.org/ws/2002/07/utility\" xmlns:work=\"http://bea.com/2004/06/soap/workarea/\">"
+				+ "<java class=\"java.beans.XMLDecoder\">"
+				+ "<string/></java></work:WorkContext></env:Header><env:Body>"
+				+ "<typ:flux xmlns:typ=\"http://www.steria.com/pnm/types\" xmlns:wlit=\"http://www.steria.com/pnm/wlitypes\">"
+				+ "<typ:egelirr>chrome-extension://aejoelaoggembcahagimdiliamlcdmfm/dhc.html#"
+				+ "<typ:eli codeRetour=\"999\" dateDemande=\"" + date + "\" datePortage=\"" + date + "\" "
+				+ "idPortage=\"160000000498\" msisdn=\"" + portinNumber + "\" opa=\"16\" "
+				+ "opat=\"16\" opd=\"02\" opdt=\"16\" opr=\"16\" oprt=\"02\" rio=\"" + rioCode
+				+ "\" tranche=\"11\" emetteur=\"RR\" recepteur=\"EG\" operation=\"ELI\"/>"
+				+ "</typ:egelirr></typ:flux></env:Body></env:Envelope>";
+	}
+
+	public static String processPortInNumposeWaitingToDone(String portinNumber, String rioCode) {
+		String date = dateToString(new Date(), "yyyyMMdd");
+		// porting date may be changed
+		return "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+				+ "<env:Envelope xmlns:env=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+				+ "<env:Header xmlns:work=\"http://bea.com/2004/06/soap/workarea/\">"
+				+ "<work:WorkContext xmlns:wsu=\"http://schemas.xmlsoap.org/ws/2002/07/utility\" xmlns:work=\"http://bea.com/2004/06/soap/workarea/\">"
+				+ "<java class=\"java.beans.XMLDecoder\"><string/></java></work:WorkContext></env:Header>"
+				+ "<env:Body><typ:flux xmlns:typ=\"http://www.steria.com/pnm/types\" xmlns:wlit=\"http://www.steria.com/pnm/wlitypes\">"
+				+ "<typ:eggoprr><typ:gop dateDemande=\"" + date + "\" datePortage=\"" + date
+				+ "\" idPortage=\"160000000397\" " + "msisdn=\"" + portinNumber
+				+ "\" opa=\"01\" opat=\"01\" opd=\"56\" opdt=\"01\" opr=\"16\" oprt=\"02\" rio=\"" + rioCode
+				+ "\" tranche=\"11\" emetteur=\"EG\" recepteur=\"RR\" operation=\"ELI\"/></typ:eggoprr></typ:flux></env:Body></env:Envelope>";
+	}
+
+	public static String portInEligibilityCheckNumposResponse(String processId) {
+
+		return "<CueRequest><Parameters><Parameter name=\"processId\">" + processId + "</Parameter>"
+				+ "<Parameter name=\"productType\">MBSUBSCRIPTION</Parameter>"
+				+ "<Parameter name=\"RESULT\">OK</Parameter>"
+				+ "<Parameter name=\"signal\">ELIGIBILITY_RESULT</Parameter></Parameters></CueRequest>";
+	}
+
+	public static String requestToPortoutFinishForUK(String processId, String date) {
+
+		return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+				+ "<CueRequest><Parameters><Parameter name=\"processId\">" + processId + "</Parameter>"
+				+ "<Parameter name=\"productType\">MBSUBSCRIPTION</Parameter>"
+				+ "<Parameter name=\"RESULT\">OK</Parameter>" + "<Parameter name=\"portingDate\">" + date
+				+ "</Parameter>" + "<Parameter name=\"signal\">FINISH_PORTOUT</Parameter>"
+				+ "</Parameters></CueRequest>";
+
+	}
+
+	public static String requestToStartPortoutForFrance(String msisdn, String rioCode) {
+
+		String date = MVNOProjectSpecific.dateToString(new Date(), "yyyyMMdd");
+
+		return "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+				+ "<env:Envelope xmlns:env=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+				+ "<env:Header xmlns:work=\"http://bea.com/2004/06/soap/workarea/\">"
+				+ "<work:WorkContext xmlns:wsu=\"http://schemas.xmlsoap.org/ws/2002/07/utility\" "
+				+ "xmlns:work=\"http://bea.com/2004/06/soap/workarea/\">"
+				+ "<java class=\"java.beans.XMLDecoder\"><string/></java>"
+				+ "</work:WorkContext></env:Header><env:Body>"
+				+ "<typ:flux xmlns:typ=\"http://www.steria.com/pnm/types\" "
+				+ "xmlns:wlit=\"http://www.steria.com/pnm/wlitypes\"><typ:egelidd>"
+				+ "<typ:eli codeRetour=\"999\" dateDemande=\"" + date + "\" datePortage=\"" + date + "\" "
+				+ "idPortage=\"160000000074\" msisdn=\"" + msisdn + "\" opa=\"01\" opat=\"01\" opd=\"16\" opdt=\"02\" "
+				+ "opr=\"56\" oprt=\"02\" rio=\"" + rioCode + "\" tranche=\"11\" "
+				+ "emetteur=\"EG\" recepteur=\"DD\" operation=\"ELI\"/></typ:egelidd></typ:flux></env:Body></env:Envelope>";
+	}
+
+	public static String secondRequestToEndPortoutForFrance(String msisdn, String rioCode) {
+
+		String date = MVNOProjectSpecific.dateToString(new Date(), "yyyyMMdd");
+
+		return "<env:Envelope xmlns:env=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+				+ "<env:Header xmlns:work=\"http://bea.com/2004/06/soap/workarea/\">"
+				+ "<work:WorkContext xmlns:wsu=\"http://schemas.xmlsoap.org/ws/2002/07/utility\" xmlns:work=\"http://bea.com/2004/06/soap/workarea/\">"
+				+ "<java class=\"java.beans.XMLDecoder\">" + "<string/></java></work:WorkContext></env:Header>"
+				+ "<env:Body><typ:flux xmlns:typ=\"http://www.steria.com/pnm/types\" "
+				+ "xmlns:wlit=\"http://www.steria.com/pnm/wlitypes\"><typ:eggopdd><typ:gop dateDemande='" + date + "' "
+				+ "datePortage='" + date + "' idPortage=\"160000000075\" msisdn='" + msisdn + "' "
+				+ "opa=\"02\" opat=\"02\" opd=\"16\" opdt=\"02\" opr=\"56\" oprt=\"01\" rio='" + rioCode + "' "
+				+ "tranche=\"11\" emetteur=\"EG\" recepteur=\"DD\" operation=\"GOP\"/>"
+				+ "</typ:eggopdd></typ:flux></env:Body></env:Envelope>";
+	}
+
+	public static String secondRequestToCancelPortoutForFrance(String msisdn, String rioCode) {
+
+		String date = MVNOProjectSpecific.dateToString(new Date(), "yyyyMMdd");
+
+		return "<env:Envelope xmlns:env=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+				+ "<env:Header xmlns:work=\"http://bea.com/2004/06/soap/workarea/\">"
+				+ "<work:WorkContext xmlns:wsu=\"http://schemas.xmlsoap.org/ws/2002/07/utility\" xmlns:work=\"http://bea.com/2004/06/soap/workarea/\">"
+				+ "<java class=\"java.beans.XMLDecoder\"><string/></java>"
+				+ "</work:WorkContext></env:Header><env:Body>"
+				+ "<typ:flux xmlns:typ=\"http://www.steria.com/pnm/types\" xmlns:wlit=\"http://www.steria.com/pnm/wlitypes\"><typ:eganrdd>"
+				+ "<typ:anr codeRetour=\"999\" dateDemande='" + date + "' datePortage='" + date
+				+ "' idPortage=\"160000000075\" " + "msisdn='" + msisdn
+				+ "' opa=\"02\" opat=\"02\" opd=\"16\" opdt=\"02\" opr=\"01\" oprt=\"01\" " + "rio='" + rioCode
+				+ "' tranche=\"15\" emetteur=\"EG\" recepteur=\"DD\" operation=\"ANR\"/></typ:eganrdd>"
+				+ "</typ:flux></env:Body></env:Envelope>";
+	}
+
+	public static String requestToResolveProvisioningSuspensionUserTaskAction(String orderNumber, String orderID,
+			String processID) {
+
+		return "<?xml version='1.0' encoding='UTF-8' standalone='yes'?><CommandRequest><Parameters><Parameter name=\"commandName\">ERROR_PROV_RES</Parameter>"
+				+ "<Parameter name=\"order\">" + orderNumber + "</Parameter><Parameter name=\"orderid\">" + orderID
+				+ "</Parameter><Parameter name=\"id\">" + orderID + "</Parameter>"
+				+ "<Parameter name=\"action\">PROVISIONING_FIXED</Parameter><Parameter name=\"processId\">" + processID
+				+ "</Parameter>" + "<Parameter name=\"signalName\">simRepProvisioningErrorResSuspension</Parameter>"
+				+ "<Parameter name=\"Provisioning_Type\">SUSPENSION</Parameter>"
+				+ "<Parameter name=\"Error_Message_From_Provisioning\">There is no imsi for msisdn</Parameter>"
+				+ "<Parameter name=\"Subscription_identity_at_provider's_end_(cds)\">null</Parameter>"
+				+ "<Parameter name=\"Description_of_the_user_task\">Provisioning Error - Replacement Order</Parameter>"
+				+ "<Parameter name=\"doneBy\">sijames</Parameter><Parameter name=\"comment\">Provisioning Fixed By Automation"
+				+ "</Parameter></Parameters></CommandRequest>";
+
+	}
+
+	public static String requestToProvisioningChangeSimUserTaskAction(String orderNumber, String orderid,
+			String processID) {
+
+		return "<?xml version='1.0' encoding='UTF-8' standalone='yes'?><CommandRequest><Parameters>"
+				+ "<Parameter name=\"commandName\">ERROR_PROV_RES</Parameter>" + "<Parameter name=\"order\">"
+				+ orderNumber + "</Parameter><Parameter name=\"orderid\">" + orderid + "</Parameter>"
+				+ "<Parameter name=\"id\">" + orderid + "</Parameter>"
+				+ "<Parameter name=\"action\">PROVISIONING_FIXED</Parameter>" + "<Parameter name=\"processId\">"
+				+ processID
+				+ "</Parameter><Parameter name=\"signalName\">simRepProvisioningErrorResChangeSim</Parameter>"
+				+ "<Parameter name=\"Provisioning_Type\">CHANGE_SIM</Parameter>"
+				+ "<Parameter name=\"Error_Message_From_Provisioning\">There is no imsi for msisdn</Parameter>"
+				+ "<Parameter name=\"Subscription_identity_at_provider's_end_(cds)\">null</Parameter>"
+				+ "<Parameter name=\"Description_of_the_user_task\">Provisioning Error - Replacement Order</Parameter>"
+				+ "<Parameter name=\"doneBy\">sijames</Parameter>"
+				+ "<Parameter name=\"comment\"></Parameter></Parameters></CommandRequest>";
+	}
+
+	public static String requestToProvisioningResumeUserTaskAction(String orderNumber, String orderid,
+			String processID) {
+
+		return "<?xml version='1.0' encoding='UTF-8' standalone='yes'?><CommandRequest><Parameters>"
+				+ "<Parameter name=\"commandName\">ERROR_PROV_RES</Parameter>" + "<Parameter name=\"order\">"
+				+ orderNumber + "</Parameter>" + "<Parameter name=\"orderid\">" + orderid + "</Parameter>"
+				+ "<Parameter name=\"id\">" + orderid
+				+ "</Parameter><Parameter name=\"action\">PROVISIONING_FIXED</Parameter>"
+				+ "<Parameter name=\"processId\">" + processID + "</Parameter>"
+				+ "<Parameter name=\"signalName\">simRepProvisioningErrorResResume</Parameter>"
+				+ "<Parameter name=\"Provisioning_Type\">RESUME</Parameter>"
+				+ "<Parameter name=\"Error_Message_From_Provisioning\">There is no imsi for msisdn</Parameter>"
+				+ "<Parameter name=\"Subscription_identity_at_provider's_end_(cds)\">null</Parameter>"
+				+ "<Parameter name=\"Description_of_the_user_task\">Provisioning Error - Replacement Order</Parameter>"
+				+ "<Parameter name=\"doneBy\">sijames</Parameter>"
+				+ "<Parameter name=\"comment\"></Parameter></Parameters></CommandRequest>";
+	}
+
+	public static String requestToFixPoliceVerificationUserTaskAction(String orderNumber, String orderid,
+			String processID) {
+
+		return "<?xml version='1.0' encoding='UTF-8' standalone='yes'?><CommandRequest><Parameters>"
+				+ "<Parameter name=\"commandName\">SIM_REP_POLICE_REPORT</Parameter>" + "<Parameter name=\"order\">"
+				+ orderNumber + "</Parameter>" + "<Parameter name=\"orderid\">" + orderid + "</Parameter>"
+				+ "<Parameter name=\"id\">" + orderid + "</Parameter>"
+				+ "<Parameter name=\"action\">VALID POLICE REPORT</Parameter>" + "<Parameter name=\"processId\">"
+				+ processID + "</Parameter>" + "<Parameter name=\"signalName\">simRepPoliceReport</Parameter>"
+				+ "<Parameter name=\"Description_of_the_user_task\">Stolen SIM Replacement - Validate Police Report"
+				+ "</Parameter>" + "<Parameter name=\"doneBy\">sijames</Parameter>"
+				+ "<Parameter name=\"comment\">Police report</Parameter></Parameters></CommandRequest>";
+	}
+
+	public static String requestToFixPoliceVerificationForHandsetLost(String MyJOiNumber, String processID,
+			String objectId) {
+		// /cin/execute
+		return "<?xml version='1.0' encoding='UTF-8' standalone='yes'?><CommandRequest><Parameters>"
+				+ "<Parameter name=\"commandName\">POLICE_REPORT_BLOCK_HANDSET</Parameter>"
+				+ "<Parameter name=\"order\">SUB/" + MyJOiNumber + "</Parameter>"
+				+ "<Parameter name=\"action\">VALID</Parameter>" + "<Parameter name=\"processId\">" + processID
+				+ "</Parameter>" + "<Parameter name=\"signalName\">ValidPoliceReport</Parameter>"
+				+ "<Parameter name=\"model\">" + Constant.HANDSET_MODEL + "</Parameter>" + "<Parameter name=\"imei\">"
+				+ Constant.HANDSET_IMEI + "</Parameter>" + "<Parameter name=\"id\">" + objectId + "</Parameter>"
+				+ "<Parameter name=\"doneBy\">sijames</Parameter>"
+				+ "<Parameter name=\"comment\">Handset Block</Parameter></Parameters></CommandRequest>";
+	}
+
+	public static String requestHandsetBlockUnblockSuccess(String processId, String command) {
+		// /cue/updateProcess
+		// BlockedHandset or UnBlockedHandset
+		return "<?xml version=\"1.0\" ?><CueRequest><Parameters>" + "<Parameter name=\"processId\">" + processId
+				+ "</Parameter>" + "<Parameter name=\"result\">PROCESSED</Parameter>" + "<Parameter name=\"command\">"
+				+ command + "</Parameter>" + "</Parameters></CueRequest>";
+	}
+
+	public static String requestToUnblockHandsetLostOrStolen(String MyJOiNumber, String processID, String objectId) {
+		// /cin/execute
+		return "<?xml version='1.0' encoding='UTF-8' standalone='yes'?><CommandRequest><Parameters>"
+				+ "<Parameter name=\"commandName\">UNBLOCK_LOST_STOLEN_HANDSET</Parameter>"
+				+ "<Parameter name=\"order\">SUB/" + MyJOiNumber + "</Parameter>"
+				+ "<Parameter name=\"action\">UNBLOCK</Parameter>" + "<Parameter name=\"processId\">" + processID
+				+ "</Parameter>" + "<Parameter name=\"signalName\">NO_SIGNAL</Parameter>" + "<Parameter name=\"imei\">"
+				+ Constant.HANDSET_IMEI + "</Parameter>" + "<Parameter name=\"id\">" + objectId + "</Parameter>"
+				+ "<Parameter name=\"doneBy\">sijames</Parameter>"
+				+ "<Parameter name=\"comment\">Unblock</Parameter></Parameters></CommandRequest>";
+	}
+
+	public static String requestToTerminateSubscription(String MyJOiNumber, String cinProductId) {
+		// /cin/execute
+		String date = MVNOProjectSpecific.dateToString(new Date(), "dd-MM-yyyy");
+		return "<?xml version=\'1.0\' encoding=\'UTF-8\' standalone=\'yes\'?>"
+				+ "<CommandRequest><Parameters><Parameter name=\"commandName\">DISCONNECT_MBSUBSCRIPTION</Parameter>"
+				+ "<Parameter name=\"order\">SUB/" + MyJOiNumber + "241</Parameter>"
+				+ "<Parameter name=\"reason\">Revocation</Parameter>" + "<Parameter name=\"date\">" + date
+				+ "</Parameter>" + "<Parameter name=\"id\">" + cinProductId + "</Parameter>"
+				+ "<Parameter name=\"doneBy\">sijames</Parameter>"
+				+ "<Parameter name=\"comment\">Subscription termination</Parameter></Parameters></CommandRequest>";
+	}
+
+	public static String requestForERROR_PROVISIONING_RES(String MyJOiNumber, String processId, String cinProductId) {
+
+		return "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>" + "<CommandRequest><Parameters>"
+				+ "<Parameter name=\"commandName\">ERROR_PROVISIONING_RES</Parameter>"
+				+ "<Parameter name=\"order\">SUB/" + MyJOiNumber + "</Parameter>"
+				+ "<Parameter name=\"action\">PROVISIONING_FIXED</Parameter>" + "<Parameter name=\"processId\">"
+				+ processId + "</Parameter>"
+				+ "<Parameter name=\"signalName\">MBAttributeProvisioningErrorResModify</Parameter>"
+				+ "<Parameter name=\"Provisioning_Type\">MODIFICATION</Parameter>"
+				+ "<Parameter name=\"Subscription_identity_at_provider's_end_(cds)\">16161616</Parameter>"
+				+ "<Parameter name=\"Description_of_the_user_task\">Provisioning Error - MBAttributes Change</Parameter>"
+				+ "<Parameter name=\"id\">" + cinProductId + "</Parameter>"
+				+ "<Parameter name=\"doneBy\">sijames</Parameter>"
+				+ "<Parameter name=\"comment\">MBDataFailureUserTaskAction resolution</Parameter></Parameters></CommandRequest>";
+	}
+
+	public static String requestToUnblockInternet(String myJoiNumber, String cinProductId) {
+
+		return "<?xml version='1.0' encoding='UTF-8' standalone='yes'?><CommandRequest><Parameters>"
+				+ "<Parameter name=\"commandName\">BLOCK_INTERNET</Parameter>" + "<Parameter name=\"order\">SUB/"
+				+ myJoiNumber + "</Parameter>" + "<Parameter name=\"internetBlocking\">DEACTIVATED</Parameter>"
+				+ "<Parameter name=\"id\">" + cinProductId + "</Parameter>"
+				+ "<Parameter name=\"doneBy\">sijames</Parameter>"
+				+ "<Parameter name=\"comment\"></Parameter></Parameters></CommandRequest>";
+	}
+
+	public static String requestToBlockInternet(String myJoiNumber, String cinProductId) {
+
+		return "<?xml version='1.0' encoding='UTF-8' standalone='yes'?><CommandRequest><Parameters>"
+				+ "<Parameter name=\"commandName\">BLOCK_INTERNET</Parameter>" + "<Parameter name=\"order\">SUB/"
+				+ myJoiNumber + "</Parameter>" + "<Parameter name=\"internetBlocking\">ACTIVATED</Parameter>"
+				+ "<Parameter name=\"id\">" + cinProductId + "</Parameter>"
+				+ "<Parameter name=\"doneBy\">sijames</Parameter><Parameter name=\"comment\">"
+				+ "</Parameter></Parameters></CommandRequest>";
+
+	}
+
+	public static String requestToReplaceSIM(String JoiNumber, String replacementReason, String simType, String country,
+			String streetName, String houseNo, String postCode, String city, String cinProductId) {
+
+		return "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>"
+				+ "<CommandRequest><Parameters><Parameter name=\"commandName\">REPLACE_SIM_BO</Parameter>"
+				+ "<Parameter name=\"order\">SUB/" + JoiNumber + "</Parameter>"
+				+ "<Parameter name=\"replacementReason\">" + replacementReason + "</Parameter>"
+				+ "<Parameter name=\"simType\">" + simType + "</Parameter><Parameter name=\"streetName\">" + streetName
+				+ "</Parameter><Parameter name=\"houseNumber\">" + houseNo + "</Parameter>"
+				+ "<Parameter name=\"postCode\">" + postCode + "</Parameter><Parameter name=\"city\">" + city
+				+ "</Parameter>" + "<Parameter name=\"country\">" + country
+				+ "</Parameter><Parameter name=\"buildingName\"></Parameter>"
+				+ "<Parameter name=\"apartment\"></Parameter><Parameter name=\"place\"></Parameter><Parameter name=\"id\">"
+				+ cinProductId + "</Parameter>" + "<Parameter name=\"doneBy\">sijames</Parameter>"
+				+ "<Parameter name=\"comment\">Lost</Parameter></Parameters></CommandRequest>";
+	}
+
+	public static String requestToActivateSubscriptionForSIMReplacement(String JoiNumber, String cinProductId,
+			String ICCID) {
+
+		return "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>"
+				+ "<CommandRequest><Parameters><Parameter name=\"commandName\">ACTIVATE_MBSUBSCRIPTION_SR</Parameter>"
+				+ "<Parameter name=\"order\">SUB/" + JoiNumber + "</Parameter>" + "<Parameter name=\"iccid\">" + ICCID
+				+ "</Parameter>" + "<Parameter name=\"id\">" + cinProductId + "</Parameter>"
+				+ "<Parameter name=\"doneBy\">sijames</Parameter>"
+				+ "<Parameter name=\"comment\">Replace SIM Activation</Parameter></Parameters></CommandRequest>";
+	}
+
+	public static String requestToRetryUpfrontPaymentUsertask(String orderNumber, String orderId, String processId,
+			String zipCode, String cardExpiryDate, String DOB, String street) {
+
+		return "<?xml version='1.0' encoding='UTF-8' standalone='yes'?><CommandRequest><Parameters>"
+				+ "<Parameter name=\"commandName\">ERROR_RES</Parameter>" + "<Parameter name=\"order\">" + orderNumber
+				+ "</Parameter>" + "<Parameter name=\"orderid\">9442</Parameter>" + "<Parameter name=\"id\">" + orderId
+				+ "</Parameter>" + "<Parameter name=\"action\">RETRY</Parameter>" + "<Parameter name=\"processId\">"
+				+ processId + "</Parameter>" + "<Parameter name=\"signalName\">UpfrontPaymentCuetFix</Parameter>"
+				+ "<Parameter name=\"postalCode\">" + zipCode + "</Parameter>"
+				+ "<Parameter name=\"Error Message From Billing\">DisempQueryOrderAction scheduled 10 times for order Number:O000007457</Parameter>"
+				+ "<Parameter name=\"cardExpiryDate\">" + cardExpiryDate + "</Parameter>"
+				+ "<Parameter name=\"dateOfBirth\">" + DOB + "</Parameter>" + "<Parameter name=\"street\">" + street
+				+ "</Parameter>" + "<Parameter name=\"houseNumber\">47</Parameter>"
+				+ "<Parameter name=\"city\">London</Parameter>" + "<Parameter name=\"doneBy\">sijames</Parameter>"
+				+ "<Parameter name=\"comment\"></Parameter></Parameters></CommandRequest>";
+	}
+
+}

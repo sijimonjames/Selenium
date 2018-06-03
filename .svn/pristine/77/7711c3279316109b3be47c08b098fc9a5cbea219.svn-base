@@ -1,0 +1,53 @@
+package com.acneuro.test.automation.cuet_reload_commands_tests;
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Actions;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.libraries.ConfigLib;
+import com.acneuro.test.automation.libraries.Constant;
+
+public class VerifyLoginScreenOfCuet_Reload extends ConfigLib {
+
+	@Test
+	public static void Login_to_CUET_R() {
+
+		String customerNumber = "00004552";
+		try {
+			// Get the URL of CUET-R
+			driver.get("http://ams-uatalfred-01/index.html");
+
+			Thread.sleep(5000);
+			// Enter the username and password for the CUET-R
+			// driver.findElement(By.xpath("//*[@id='loginusername-inputEl']")).sendKeys(Constant.COMMON_USERNAME);
+			// driver.findElement(By.xpath("//*[@id='loginpassword-inputEl']")).sendKeys(Constant.COMMON_PASSWORD);
+			driver.findElement(By.xpath("//*[@id='loginusername-inputEl']")).sendKeys(Constant.COMMON_USERNAME);
+			driver.findElement(By.xpath("//*[@id='loginpassword-inputEl']")).sendKeys(Constant.COMMON_PASSWORD);
+			Thread.sleep(2000);
+
+			// Click on 'Login' button
+			driver.findElement(
+					By.cssSelector("[style*='back'][class*='x-btn-icon-el x-btn-icon-el-default-toolbar-small']"))
+					.click();
+
+			// Check the 'CUET' button
+			driver.findElement(By.xpath("//*[@id='cuetbut-btnIconEl']")).click();
+			// Search & Select
+			driver.findElement(By.xpath("//*[@id='searchfieldcus-inputEl']")).sendKeys(customerNumber);
+
+			Thread.sleep(2000);
+
+			driver.findElement(By.cssSelector("a[tabindex='0'][style*='width: 34px;']")).click();
+			
+			Actions action = new Actions(driver);
+			WebElement element = driver.findElement(By.cssSelector("img[src*='images/countriescodespng/']"));
+			action.doubleClick(element).perform();
+			
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+
+	}
+
+}

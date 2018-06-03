@@ -1,0 +1,809 @@
+package com.acneuro.test.automation.libraries;
+
+import java.io.File;
+import java.sql.ResultSet;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.commons.io.FileUtils;
+import org.junit.Assert;
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.ie.InternetExplorerDriver;
+import org.openqa.selenium.support.ui.Select;
+import org.testng.Reporter;
+
+public class FranceProjectSpecific extends FranceEnglishConfigLib {
+
+	// This is a generic method to verify a text present in the page
+	public static String get_and_Verify_Text(String identifier) {
+		String Text = driver.findElement(By.xpath(identifier)).getText();
+		return Text;
+	}
+
+	public static void verifyTitleOfPage(String expectedTitle) {
+		Assert.assertEquals(expectedTitle, driver.getTitle());
+		if (driver.getTitle().equals(expectedTitle)) {
+			Reporter.log("PASS:MyJOi Page " + expectedTitle + " is as expected", true);
+		} else {
+			Reporter.log("FAIL: My Joi Page " + expectedTitle + " is NOT as expected", true);
+		}
+	}
+
+	public static void scrollDownToView(WebElement element) {
+		try {
+			JavascriptExecutor jse = (JavascriptExecutor) driver;
+			jse.executeScript("arguments[0].scrollIntoView();", element);
+			Thread.sleep(500);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void takeScreenShot(String File_Location) {
+		try {
+			File scrFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
+			Thread.sleep(4000);
+			FileUtils.copyFile(scrFile, new File(File_Location));// "C:/testing/workspace/Screenshots/mvno/screenshot.png"
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void order_creation_page() {
+		// Click on 'Order' button
+		driver.findElement(By.xpath("//a [text()='ORDER']")).click();
+	}
+
+	public static void Login_creation_page() {
+		// Click on 'Login' button
+		driver.findElement(By.xpath("//a [text()='LOGIN']")).click();
+	}
+
+	public static void JOi_LIBERTY_creation_page() {
+		// Click on 'Joi Liberty' button
+		driver.findElement(By.xpath("//a [text()='JOi LIBERTY']")).click();
+	}
+
+	public static void Joi_Liberty_price_plan() {
+		// check the radio button 'Joi Liberty'
+		try {
+			driver.findElement(By.xpath("//div[2]/label[1]/p[1]/b")).click();
+			Thread.sleep(500);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void combiSimTypeSelection() {
+		// Select "Combi"
+		try {
+			WebElement combiSim = driver.findElement(By.xpath("//div[1]/section/div[3]/label[1]/p/b"));
+			FranceProjectSpecific.scrollDownToView(combiSim);
+			combiSim.click();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void nanoSimTypeSelection() {
+		// Select "Nano"
+		try {
+			WebElement nanoSim = driver.findElement(By.xpath("//div[1]/section/div[3]/label[2]/p/b"));
+			FranceProjectSpecific.scrollDownToView(nanoSim);
+			nanoSim.click();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void Our_Offer_add_to_basket() {
+		// work for all 'Add To Basket' cases
+		boolean enable = driver.findElement(By.cssSelector("input[value='ADD TO BASKET']")).isEnabled();
+		System.out.println(enable);
+		if (enable == true) {
+			driver.findElement(By.cssSelector("input[value='ADD TO BASKET']")).click();
+		}
+	}
+
+	public static void add_to_basket_without_porting() {
+		// work for all 'Add To Basket' cases
+
+		WebElement element = driver.findElement(By.xpath("//div/input[5]"));
+
+		FranceProjectSpecific.scrollDownToView(element);
+		element.click();
+	}
+
+	public static void addToBasketWithPortin() {
+
+		// Click the radio Button for Port IN
+
+		WebElement element = driver.findElement(By.cssSelector("label[class='select-bar checkbox']"));
+		element.click();
+		FranceProjectSpecific.scrollDownToView(element);
+		// Click on Add to Basket Button
+		driver.findElement(By.xpath("//div/input[5]")).click();
+	}
+
+	public static void Check_Out_Order() {
+		// Order check out button click
+		driver.findElement(By.xpath("//div/article/section/div[2]/a")).click();
+	}
+
+	public static void FranceCustomerAccountCreation() {
+		String Email_ID = FranceProjectSpecific.uniqueEmailIdForFRCustomer();
+		driver.findElement(By.name("email-fieldset__email")).sendKeys(Email_ID);
+		driver.findElement(By.name("email-fieldset__confirm-email")).sendKeys(Email_ID);
+		driver.findElement(By.name("password-fieldset__password")).sendKeys(Constant.DEFAULT_MYJOI_PASSWORD);
+		driver.findElement(By.name("password-fieldset__confirm-password")).sendKeys(Constant.DEFAULT_MYJOI_PASSWORD);
+		driver.findElement(By.xpath("//a [text()='CONTINUE']")).click();
+	}
+
+	public static void Customer_details(String salutation, String First_Name, String Middle_Name, String Last_Name,
+			String DOB, String Phone) {
+		// drop down selection
+		try {
+			WebElement ddList = driver.findElement(By.xpath("//div[2]/fieldset[1]/div/select"));
+			Select s = new Select(ddList);
+			s.selectByValue(salutation);
+			// First name
+			driver.findElement(By.name("personal-details-fieldset__first-name")).sendKeys(First_Name);
+			driver.findElement(By.name("personal-details-fieldset__prefix")).sendKeys(Middle_Name);
+			driver.findElement(By.name("personal-details-fieldset__last-name")).sendKeys(Last_Name);
+			// DOB field need a click before send the value
+			driver.findElement(By.name("personal-details-fieldset__date-of-birth")).click();
+			Thread.sleep(500);
+			driver.findElement(By.name("personal-details-fieldset__date-of-birth")).sendKeys(DOB);
+			Thread.sleep(500);
+			driver.findElement(By.name("personal-details-fieldset__phone-number")).sendKeys(Phone);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void uploadCustomerIdCopy() {
+		// Select and upload an Id copy of the France customer
+		// This is only for France customer
+		try {
+			// String idFranceFilePath = System.getProperty("user.dir") +
+			// Constant.DEFAULT_TESTDATA_LOCATION + "/" +
+			// Constant.FranceIdFileName;
+			// Click on the upload file button
+			WebElement fileUploadButton = driver.findElement(By.cssSelector("input[value = 'UPLOAD FILE']"));
+			fileUploadButton.click();
+			FranceProjectSpecific.scrollDownToView(fileUploadButton);
+			// Handle the hidden division pop-up
+			WebElement fileUpload = driver.findElement(By.xpath("//input[@type='file']"));
+			Thread.sleep(1000);
+			fileUpload.sendKeys(Constant.FranceIdFileName);
+			Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+			System.out.println("ID is uploaded");
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void Contact_Billing_Adress(String zipcode, String street, String addressValue) {
+
+		try {
+			// post code
+			driver.findElement(By.name("addval__zip")).sendKeys(zipcode);
+			// Street
+			driver.findElement(By.name("addval__street")).sendKeys(street);
+			// Click to search address
+			WebElement element = driver
+					.findElement(By.cssSelector("input[class='addvalValidateButton call-to-action button']"));
+			element.click();
+			// List of Addresses
+			Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+			WebElement addressList = driver.findElement(By.xpath("//div[2]/fieldset[2]/div/select"));
+			Select select = new Select(addressList);
+
+			select.selectByValue(addressValue);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		// Click on create account button by scroll down the page to make the
+		// element into view
+		try {
+			WebElement createAccount = driver.findElement(By.xpath("//div/article/form/section[1]/input"));
+			System.out.println(createAccount.isEnabled());
+			Thread.sleep(500);
+			FranceProjectSpecific.scrollDownToView(createAccount);
+			createAccount.click();
+			Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	// Need to scrap this
+	public static void updateEmailIInExcelSheet() {
+		// get the customer Email ID and update in Excel sheet in 'Existing
+		// Customers' section
+		String configFile = Constant.DEFAULT_TESTDATA_LOCATION + "/" + Constant.configFileName;
+		String existingCustomer = Generic.getCellValue(configFile, "Email_ids", 2, 4);
+		Generic.updateCellValue(configFile, "Email_ids", 5, 4, existingCustomer);
+		// update the email ID to unique value for next customer creation
+		String count = Generic.getCellValue(configFile, "Email_ids", 2, 2);
+		System.out.println(count);
+		int count1 = Integer.parseInt(count);
+		int number = count1 + 1;
+		String cellValue1 = String.valueOf(number);
+		Generic.updateCellValue(configFile, "Email_ids", 2, 2, cellValue1);
+		String uniqueEmailIdForNextTest = "MVNO_Automation_" + cellValue1 + "@test.fr";
+		Generic.updateCellValue(configFile, "Email_ids", 2, 4, uniqueEmailIdForNextTest);
+	}
+
+	public static void continueButtonAfterAccountCreation() {
+		// post code
+
+		try {
+			WebElement continueButton = driver.findElement(By.cssSelector("a[href='/our-offer/order']"));
+			FranceProjectSpecific.scrollDownToView(continueButton);
+			continueButton.click();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void continueToStep3WithoutPorting() {
+		// Click to next page from step 3
+		WebElement continueStep3 = driver.findElement(By.xpath("//form/dl/dd[2]/div/section/a[1]"));
+		FranceProjectSpecific.scrollDownToView(continueStep3);
+		continueStep3.click();
+	}
+
+	public static void continueToStep3WithPortin() {
+		// Click to next page from step 3
+
+		try {
+			String uniquePortinNumber = franceUniquePortInNumber();
+			Thread.sleep(500);
+			System.out.println("New Portin number: " + uniquePortinNumber + "");
+			String rioCode = RioGenerator.generateRio(Constant.NUMPOS_OP_CODE_1,
+					Constant.NUMPOS_DEFAULT_RIO_CODE.substring(2, 3), Constant.NUMPOS_DEFAULT_RIO_CODE.substring(3, 9),
+					uniquePortinNumber);
+			Reporter.log("RIO Code: " + rioCode);
+			Thread.sleep(500);
+			driver.findElement(By.cssSelector("input[name = 'number-porting__currentNumber']"))
+					.sendKeys(uniquePortinNumber);
+			driver.findElement(By.cssSelector("input[name = 'number-porting__riocode']")).sendKeys(rioCode);
+			driver.findElement(By.cssSelector("label[class = 'select-bar checkbox cancel-current-subscription']"))
+					.click();
+			WebElement continueStep3 = driver.findElement(By.xpath("//form/dl/dd[2]/div/section/a[1]"));
+			FranceProjectSpecific.scrollDownToView(continueStep3);
+			continueStep3.click();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void franceBankDetailsAndClickToContinue(String accountNumberInIban, String BIC)
+			throws InterruptedException {
+		driver.findElement(By.name("bank-account__iban")).sendKeys(accountNumberInIban);
+		driver.findElement(By.name("bank-account__bic")).sendKeys(BIC);
+		// WebElement continueToStep4 =
+		// driver.findElement(By.xpath("id('panel2')/section/a[1]"));
+		// FranceProjectSpecific.scrollDownToView(element);
+		// element.click();
+		// element.isSelected();
+
+		WebElement continueToNext = driver.findElement(By.xpath("//dl/dd[3]/div/section/a[1]"));
+		FranceProjectSpecific.scrollDownToView(continueToNext);
+		continueToNext.click();
+
+	}
+
+	public static void Order_summary_page(String Rep_ID) {
+		try {
+			
+			WebElement elementToScroll = driver.findElement(By.xpath("//*[@id='panel3']/fieldset[6]/div/section/div/div[1]/p"));
+			scrollDownToView(elementToScroll);
+			
+			driver.findElement(By.xpath("//article/form/dl/dd[4]/div/fieldset[9]/label")).click();
+			driver.findElement(By.xpath("//article/form/dl/dd[4]/div/fieldset[10]/label")).click();
+			driver.findElement(By.xpath("//article/form/dl/dd[4]/div/fieldset[11]/label")).click();
+			driver.findElement(By.name("teamid__teamid")).sendKeys(Rep_ID);
+			WebElement finalPage = driver.findElement(By.xpath("//div/article/form/section/input"));
+			FranceProjectSpecific.scrollDownToView(finalPage);
+			finalPage.click();
+			// Explicit wait until Datacash external page opens up
+			Thread.sleep(10000);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	// Automating datacash page
+	public static void Payment_Datacash(String Card_Type, String Card_Number, String Expiry_Year, String CVV) {
+		try {
+			// Selecting the required Credit card Visa, master card etc..
+			WebElement cardList = driver.findElement(By.xpath("//tbody/tr[4]/td/select"));
+			Select s = new Select(cardList);
+			s.selectByVisibleText(Card_Type);
+
+			// Card Number
+			driver.findElement(By.name("card_number")).sendKeys(Card_Number);
+
+			// Expiry mmyy, Month retain same and year need to be in future
+			WebElement yearList = driver.findElement(By.name("exp_year"));
+			Select s1 = new Select(yearList);
+			s1.selectByVisibleText(Expiry_Year);
+			driver.findElement(By.name("cv2_number")).sendKeys(CVV);
+			driver.findElement(By.xpath("/html/body/form/div/input")).click();
+			Thread.sleep(7000); // New page loading
+			// Authentication
+			driver.findElement(By.xpath("//table/tbody/tr[1]/td[1]/input")).click();
+			Thread.sleep(10000);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	// Resolving tasks API call, future should be done from cuET-Reload
+	public static void resolvingTasksSignal(String processId, String taskId) {
+		String resolvingTasksApiBody = RestApiAutomation.resolvingTasksApiBody(processId, taskId);
+		RestApiAutomation.httpPostTest(Constant.cue_Update, resolvingTasksApiBody);
+	}
+
+	// Shipping API call
+	public static void workerTriggerForBillingUpdate(String workerUrl) {
+		try {
+			driver = new FirefoxDriver();
+			// implicit wait to complete each browser action
+			driver.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
+			driver.get(workerUrl);
+			// to maximize the opening browser window
+			driver.manage().window().maximize();
+			// Trigger worker 'QueryOrderStatusJob'
+			WebElement workerQueryOrderStatusJob = driver.findElement(By.xpath("//div[3]/div/div[3]/div[2]/a[1]"));
+			FranceProjectSpecific.scrollDownToView(workerQueryOrderStatusJob);
+			workerQueryOrderStatusJob.click();
+			Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+			// Trigger worker 'QuerySubscriptionJob'
+			WebElement workerQuerySubscriptionJob = driver
+					.findElement(By.xpath("//div[2]/div[3]/div/div[16]/div[2]/a[1]"));
+			FranceProjectSpecific.scrollDownToView(workerQuerySubscriptionJob);
+			workerQuerySubscriptionJob.click();
+			Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+			driver.quit();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static boolean checkIfActionExists(String orderID, String actionName) {
+		try {
+			for (int i = 0; i < Constant.DEFAULT_RETRY_COUNT; i++) {
+				ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(
+						QueryUtils.queryActionInstanceWithOrderIdAndActionName(orderID, actionName));
+				while (resultSet.next()) {
+					return true;
+				}
+				Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return false;
+	}
+
+	public static boolean processUpfrontPayment(String orderID) {
+
+		try {
+
+			for (int i = 0; i < Constant.DEFAULT_RETRY_COUNT; i++) {
+				ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(
+						QueryUtils.queryActionInstanceWithOrderIdAndActionName(orderID, "ofUpfrontPaymentWait"));
+
+				while (resultSet.next()) {
+					String actionName = resultSet.getString("NAME");
+					String status = resultSet.getString("STATUS");
+
+					if ("ofUpfrontPaymentWait".equals(actionName) && "FIN".equals(status)) {
+						return true;
+					}
+					if ("ofUpfrontPaymentWait".equals(actionName) && "ERR".equals(status)) {
+						return false;
+					}
+					if ("ofUpfrontPaymentWait".equals(actionName) && !"FIN".equals(status)) {
+						FranceProjectSpecific.workerTriggerForBillingUpdate(Constant.billsrvWorkerUrl);
+					}
+				}
+				Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	// Shipping API call
+
+	public static boolean processShipWait(String orderID) {
+
+		try {
+
+			for (int i = 0; i < Constant.DEFAULT_RETRY_COUNT; i++) {
+				ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(
+						QueryUtils.queryActionInstanceWithOrderIdAndActionName(orderID, "mbShipWaiting"));
+
+				while (resultSet.next()) {
+					String actionName = resultSet.getString("NAME");
+					String status = resultSet.getString("STATUS");
+					String processId = resultSet.getString("PRI_ID");
+					System.out.println("shipping process id: " + processId);
+
+					if ("mbShipWaiting".equals(actionName) && "FIN".equals(status)) {
+						return true;
+					}
+					if ("mbShipWaiting".equals(actionName) && "ERR".equals(status)) {
+						return false;
+					}
+					if ("mbShipWaiting".equals(actionName) && !"FIN".equals(status)) {
+						String ShippingApiBody = RestApiAutomation.shippingSignalApiBody(processId);
+						RestApiAutomation.httpPostTest(Constant.cue_Update, ShippingApiBody);
+					}
+				}
+				Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	// simple date format for xmls
+	public static String dateToString(Date date, String format) {
+		SimpleDateFormat formatter = new SimpleDateFormat(format);
+		return formatter.format(date);
+	}
+
+	public static boolean processEligibilityCheckWaiting(String orderID) {
+		String portinNumber = "";
+		String rioCode = "";
+
+		try {
+
+			for (int i = 0; i < Constant.DEFAULT_RETRY_COUNT; i++) {
+				ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(
+						QueryUtils.queryActionInstanceWithOrderIdAndActionName(orderID, "mbElegibilityCheck"));
+
+				while (resultSet.next()) {
+					String actionName = resultSet.getString("NAME");
+					String status = resultSet.getString("STATUS");
+					String processId = resultSet.getString("PRI_ID");
+					System.out.println("eligibility Check process id: " + processId);
+
+					if ("mbElegibilityCheck".equals(actionName) && "FIN".equals(status)) {
+						return true;
+					}
+					if ("mbElegibilityCheck".equals(actionName) && "ERR".equals(status)) {
+						return false;
+					}
+					if ("mbElegibilityCheck".equals(actionName) && !"FIN".equals(status)) {
+						String date = dateToString(new Date(), "yyyyMMdd");
+						ResultSet numposResultSet = OracleJdbcConnection.numposDatabaseSelectQuery(
+								QueryUtils.latestPortinNumberfromNumposDB("FR", Constant.FR_Portin_Number));
+						while (numposResultSet.next()) {
+							portinNumber = numposResultSet.getString("MAX_PORTING_NUMBER");
+						}
+						rioCode = RioGenerator.generateRio(Constant.NUMPOS_OP_CODE_1,
+								Constant.NUMPOS_DEFAULT_RIO_CODE.substring(2, 3),
+								Constant.NUMPOS_DEFAULT_RIO_CODE.substring(3, 9), portinNumber);
+
+						String eligibilityApiBody = RestApiAutomation.portInEligibilityCheckNumposeResponse(date,
+								portinNumber, rioCode);
+
+						System.out.println("====" + eligibilityApiBody);
+
+						RestApiAutomation.httpPostTest(Constant.NUMPOS_INCOMING_REQUEST, eligibilityApiBody);
+
+					}
+				}
+				Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public static boolean processNumposWaiting(String orderID) {
+		String portinNumber = "";
+		String rioCode = "";
+
+		try {
+
+			for (int i = 0; i < Constant.DEFAULT_RETRY_COUNT; i++) {
+				ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(
+						QueryUtils.queryActionInstanceWithOrderIdAndActionName(orderID, "mbNumPosWaiting"));
+
+				while (resultSet.next()) {
+					String actionName = resultSet.getString("NAME");
+					String status = resultSet.getString("STATUS");
+					String processId = resultSet.getString("PRI_ID");
+					System.out.println("mbNumPosWaiting process id: " + processId);
+
+					if ("mbNumPosWaiting".equals(actionName) && "FIN".equals(status)) {
+						return true;
+					}
+					if ("mbNumPosWaiting".equals(actionName) && "ERR".equals(status)) {
+						return false;
+					}
+					if ("mbNumPosWaiting".equals(actionName) && !"FIN".equals(status)) {
+						String date = dateToString(new Date(), "yyyyMMdd");
+						ResultSet numposResultSet = OracleJdbcConnection.numposDatabaseSelectQuery(
+								QueryUtils.latestPortinNumberfromNumposDB("FR", Constant.FR_Portin_Number));
+						while (numposResultSet.next()) {
+							portinNumber = numposResultSet.getString("MAX_PORTING_NUMBER");
+						}
+						rioCode = RioGenerator.generateRio(Constant.NUMPOS_OP_CODE_2,
+								Constant.NUMPOS_DEFAULT_RIO_CODE.substring(2, 3),
+								Constant.NUMPOS_DEFAULT_RIO_CODE.substring(3, 9), portinNumber);
+
+						String numposApiBody = RestApiAutomation.processPortInNumposeWaitingToDone(date, portinNumber,
+								rioCode);
+
+						System.out.println("====" + numposApiBody);
+
+						RestApiAutomation.httpPostTest(Constant.NUMPOS_INCOMING_REQUEST, numposApiBody);
+
+					}
+				}
+				Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public static void LoginToMyJoiFrance() {
+		String configFile = Constant.DEFAULT_TESTDATA_LOCATION + "/" + Constant.configFileName;
+		String browserType = Generic.getCellValue(configFile, "Browser_selection", 2, 1);
+		String url = Generic.getCellValue(configFile, "Browser_selection", 3, 1);
+
+		if (browserType.equals("Internet Explorer")) {
+			System.setProperty("webdriver.ie.driver", Constant.IE_Driver_Path);
+			driver = new InternetExplorerDriver();
+			// Reporter.log("Opening Internet Explorer", true);
+		} else if (browserType.equals("Google Chrome")) {
+			System.setProperty("webdriver.chrome.driver", Constant.Chrome_Driver_Path);
+			driver = new ChromeDriver();
+			// Reporter.log("Opening Google Chrome", true);
+		} else {
+			driver = new FirefoxDriver();
+			// Reporter.log("Opening Mozilla FireFox", true);
+		}
+		// get the URL of the page JOi UK/FR_FR/FR_EN
+		driver.get(url);
+		driver.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
+		// to maximize the opening browser window
+		driver.manage().window().maximize();
+
+		try {
+			String franceEmailId = existingEmailIdForFRCustomer();
+			Thread.sleep(1000);
+			driver.findElement(By.xpath("//section[1]/div/nav/ul/li[3]/a")).click();
+			// login with existing customer details
+			driver.findElement(By.name("login-fieldset__email")).sendKeys(franceEmailId);
+			driver.findElement(By.name("login-fieldset__password")).sendKeys(Constant.DEFAULT_MYJOI_PASSWORD);
+			Thread.sleep(400);
+			driver.findElement(By.cssSelector("input[value = 'LOGIN']")).click();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void ActivateSimAfterLogin() {
+		try {
+			driver.findElement(By.cssSelector("a[href*= 'NC_MV_SUB_ACTV_REM1']")).click();
+			driver.findElement(By.cssSelector("input[name='iccid']")).sendKeys(Constant.ICCID_1);
+			takeScreenShot("C:/testing/workspace/Screenshots/mvno/sim_activation.png");
+			WebElement activateSim = driver.findElement(By.cssSelector("input[value = 'ACTIVATE YOUR SIM']"));
+			scrollDownToView(activateSim);
+			activateSim.click();
+			Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+			driver.quit();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void provisioningDuringActivationOfOrders(String orderId) {
+		String processId = "";
+		checkIfActionExists(orderId, "mbProvisionWait");
+
+		// here we check if provisioning action is created
+
+		try {
+			ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(
+					QueryUtils.queryActionInstanceWithOrderIdAndActionName(orderId, "mbProvisionWait"));
+
+			while (resultSet.next()) {
+				String actionName = resultSet.getString("NAME");
+				String result = resultSet.getString("RESULT");
+				processId = resultSet.getString("PRI_ID");
+
+				if ("mbProvisionWait".equals(actionName) && "RETRY".equals(result)) {
+					OracleJdbcConnection.crmDatabaseUpdateQuery(
+							QueryUtils.queryUpdateActionInstanceScheduledTime(processId, "mbProvisionStart"));
+					Thread.sleep(Constant.DEFAULT_LONG_SLEEP_TIME); // 2mins
+																	// sleep
+				} else
+					break;
+
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		try {
+			ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(
+					QueryUtils.queryActionInstanceWithOrderIdAndActionName(orderId, "mbProvisionWait"));
+
+			while (resultSet.next()) {
+				String actionName = resultSet.getString("NAME");
+				String result = resultSet.getString("RESULT");
+				processId = resultSet.getString("PRI_ID");
+				if ("mbProvisionWait".equals(actionName) && "ERROR".equals(result)) {
+					// update action result=null, status = 'WAI', owner=null
+					OracleJdbcConnection.crmDatabaseUpdateQuery(QueryUtils.queryUpdateOrderLines(orderId));
+					OracleJdbcConnection.crmDatabaseUpdateQuery(QueryUtils.queryUpdateCinProducts(orderId));
+					OracleJdbcConnection.crmDatabaseUpdateQuery(QueryUtils.queryUpdateOrdOrders(orderId));
+					OracleJdbcConnection.crmDatabaseUpdateQuery(
+							QueryUtils.queryUpdateActionInstances(processId, "mbProvisionWait"));
+					OracleJdbcConnection.crmDatabaseUpdateQuery(QueryUtils.queryUpdateProcessInstances(processId));
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		try {
+			System.out.println("starting provisioning");
+			String provisioningSuccess = RestApiAutomation.provisioningSuccessSignalApiBody(processId);
+			System.out.println(provisioningSuccess);
+			RestApiAutomation.httpPostTest(Constant.cue_Update, provisioningSuccess);
+			System.out.println("provisioning is completed, now the customer should be active");
+
+			Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static String franceUniquePortInNumber() {
+		String uniquePortInNumber = "";
+
+		try {
+
+			ResultSet resultSet = OracleJdbcConnection
+					.numposDatabaseSelectQuery(QueryUtils.latestPortinNumberfromNumposDB("FR", Constant.FR_Portin_Number));
+
+			while (resultSet.next()) {
+				String portInNumber = resultSet.getString("MAX_PORTING_NUMBER");
+				uniquePortInNumber = "0" + String.valueOf(((Integer.parseInt(portInNumber)) + 1));
+			}
+		} catch (Exception e) {
+
+		}
+
+		return uniquePortInNumber;
+	}
+
+	public static boolean processNumposForFrancePortIn(String orderID) {
+
+		try {
+			ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(
+					QueryUtils.queryActionInstanceWithOrderIdAndActionName(orderID, "mbNumPosStart"));
+
+			while (resultSet.next()) {
+				String actionName = resultSet.getString("NAME");
+				String status = resultSet.getString("STATUS");
+				String result = resultSet.getString("RESULT");
+
+				if ("mbNumPosStart".equals(actionName) && "FIN".equals(status) && "SUCCESS".equals(result)) {
+					return true;
+				}
+				if ("mbNumPosStart".equals(actionName) && "FIN".equals(status) && "ERROR".equals(result)) {
+					return false;
+				}
+				if ("mbNumPosStart".equals(actionName) && "ERR".equals(status)) {
+					return false;
+				}
+			}
+			Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public static boolean numposProvisioningstartToNow(String orderId) {
+
+		// here we check if mbProvisionStart action is created
+
+		for (int i = 0; i < Constant.DEFAULT_RETRY_COUNT; i++) {
+			try {
+				ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(
+						QueryUtils.queryActionInstanceWithOrderIdAndActionName(orderId, "mbProvisionStart"));
+
+				while (resultSet.next()) {
+					String actionName = resultSet.getString("NAME");
+					String status = resultSet.getString("STATUS");
+					String processId = resultSet.getString("PRI_ID");
+
+					if ("mbProvisionStart".equals(actionName) && "FIN".equals(status)) {
+						return true;
+					}
+					if ("mbProvisionStart".equals(actionName) && "ERR".equals(status)) {
+						return false;
+					}
+					if ("mbProvisionStart".equals(actionName) && "SCH".equals(status)) {
+						OracleJdbcConnection.crmDatabaseUpdateQuery(
+								QueryUtils.queryUpdateActionInstanceScheduledTime(processId, "mbProvisionStart"));
+						// 2mins wait to process
+						Thread.sleep(Constant.DEFAULT_LONG_SLEEP_TIME);
+
+					}
+
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return false;
+	}
+
+	public static String uniqueEmailIdForFRCustomer() {
+		// Taking a unique id from existing email id
+		String latestEmailId = existingEmailIdForFRCustomer();
+		String existingId = latestEmailId.split("_")[2].split("@")[0];
+		String uniqueId = String.valueOf(((Integer.parseInt(existingId)) + 1));
+		// Creating a new Email ID
+		String newUniqueEmailID = "MVNO_Automation_" + uniqueId + "@test.fr";
+		System.out.println(newUniqueEmailID);
+		return newUniqueEmailID;
+	}
+
+	public static String existingEmailIdForFRCustomer() {
+		String lastCustomerNumber = "";
+		String latestEmailId = "";
+		ResultSet customerNumber = OracleJdbcConnection
+				.crmDatabaseSelectQuery(QueryUtils.queryMaxCustomerNumberFrCustomer());
+		try {
+			while (customerNumber.next()) {
+				lastCustomerNumber = customerNumber.getString("MAX_CUSTOMER_NUMBER");
+				System.out.println(lastCustomerNumber);
+			}
+
+			ResultSet emailId = OracleJdbcConnection
+					.crmDatabaseSelectQuery(QueryUtils.queryLatestExistingCustomerEmailId(lastCustomerNumber));
+
+			while (emailId.next()) {
+				latestEmailId = emailId.getString("EMAIL_ADDRESS");
+				System.out.println(latestEmailId);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return latestEmailId;
+	}
+
+}

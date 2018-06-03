@@ -1,0 +1,111 @@
+package com.acneuro.test.automation.portingTests;
+
+import static com.acneuro.test.automation.db_connection_libraries.OracleDBUtils.queryActionInstanceWithProcessIdAndActionName;
+import static com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific.checkIfActionExistsWithProcessId;
+import static com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific.dateToString;
+
+import java.sql.ResultSet;
+import java.util.Date;
+
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.db_connection_libraries.OracleJdbcConnection;
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.libraries.RestApiAutomation;
+import com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific;
+import com.acneuro.test.automation.mvno_project_library.UKProjectSpecific;
+
+public class TC_02_UKPortOutTests {
+
+	private static String joiNumber = "Latest Active";
+	private static String processId = "From Numpos table";
+
+	@Test(priority = 1)
+	public static void portOutOfUKCustomer() {
+
+//		UKProjectSpecific.ukUrlSelection();
+
+		joiNumber = UKProjectSpecific.LoginToUKMyJoiWithActiveSubscription();
+		System.out.println("Joi mobile Number: " + joiNumber);
+		// Step 5: My Subscriptions > find the same active subscription >
+		// MySettings
+		UKProjectSpecific.ukManageSettingsFromSubscriptions(joiNumber);
+		UKProjectSpecific.ukPortOutFromManageSettings();
+		// AFTER SUBMIT A PROCESS 'pONumPos' WILL BE INITIATED,
+		// REFERENCE ID IN NUMPOS IS PROCESS ID IN CUES
+
+		processId = MVNOProjectSpecific.verifyPortOutIsInitiatedInNumpos(joiNumber);
+		System.out.println("Process ID: " + processId);
+
+		boolean numposStart = MVNOProjectSpecific.checkIfActionExistsWithProcessId(processId, "pONumPos");
+		Assert.assertTrue(numposStart);
+
+		// SEND A REST API REQUEST TO START THE PORT-OUT
+		numberPortingFinish();
+
+		// THIS SHOULD BE UPDATED AND TERMINATE THE SUBSCRIPTION
+		boolean numposFinish = MVNOProjectSpecific.checkIfActionExistsWithProcessId(processId, "pONumPosFinish");
+		Assert.assertTrue(numposFinish);
+		// CHECK FOR 'pONumPosFinish' IS FINISHED IN SUCCESS
+		boolean numposSuccess = checkForPortOutIsDone();
+		Assert.assertTrue(numposSuccess);
+	}
+
+	public static void numberPortingFinish() {
+
+		try {
+			ResultSet resultSet = OracleJdbcConnection
+					.crmDatabaseSelectQuery(queryActionInstanceWithProcessIdAndActionName(processId, "pONumPos"));
+
+			while (resultSet.next()) {
+				String actionName = resultSet.getString("NAME");
+				String status = resultSet.getString("STATUS");
+				// String result = resultSet.getString("RESULT");
+				if ("pONumPos".equals(actionName) && "WAI".equals(status)) {
+
+					// send API request to ORC to finish port out
+					String date = dateToString(new Date(), "yyyy-MM-dd hh:mm:ss");
+					String portOutUKFinish = RestApiAutomation.requestToPortoutFinishForUK(processId, date);
+					System.out.println(portOutUKFinish);
+					RestApiAutomation.httpPostTest(Constant.cue_Update, portOutUKFinish);
+					Thread.sleep(Constant.DEFAULT_LONG_SLEEP_TIME);
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static boolean checkForPortOutIsDone() {
+		checkIfActionExistsWithProcessId(processId, "pONumPosFinish");
+
+		try {
+
+			ResultSet resultSet = OracleJdbcConnection
+					.crmDatabaseSelectQuery(queryActionInstanceWithProcessIdAndActionName(processId, "pONumPosFinish"));
+
+			while (resultSet.next()) {
+				String actionName = resultSet.getString("NAME");
+				String status = resultSet.getString("STATUS");
+				String result = resultSet.getString("RESULT");
+
+				if ("pONumPosFinish".equals(actionName) && "FIN".equals(status) && "SUCCESS".equals(result)) {
+					System.out.println(String.format("JOi Number %s is successfully PORTED OUT", joiNumber));
+					return true;
+				}
+				if ("pONumPosFinish".equals(actionName) && "FIN".equals(status) && "ERROR".equals(result)) {
+					System.out.println("PORTED OUT Finished in Error");
+					return false;
+				}
+				if ("pONumPosFinish".equals(actionName) && "ERR".equals(status)) {
+					System.out.println("PORTED OUT Finished in Error");
+					return false;
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+}

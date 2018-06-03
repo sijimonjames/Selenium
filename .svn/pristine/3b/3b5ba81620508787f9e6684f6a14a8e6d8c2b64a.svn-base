@@ -1,0 +1,54 @@
+package com.acneuro.test.automation.france_workflow_tests;
+
+import org.testng.Assert;
+import org.testng.Reporter;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.libraries.RestApiAutomation;
+import com.acneuro.test.automation.mvno_project_library.FranceProjectSpecific;
+import com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific;
+
+public class TC_06_FrancePortOutTests {
+	@Test
+	public void portoutFrance() {
+
+		String portOutId = "";
+		String msisdn = "";
+		String processId = "";
+
+		// Take portout id from database/ ATTRIBUTE1 from CIN_PRODUCTS table
+		String portOutIdAndMsisdn = FranceProjectSpecific.fetchPortOutRioCodeFromLatestCustomer("FR");
+		portOutId = portOutIdAndMsisdn.split("@")[0];
+		msisdn = portOutIdAndMsisdn.split("@")[1];
+		
+		System.out.println("joiNumber: " + msisdn);
+		System.out.println("Rio Code: " + portOutId);
+		
+		// fake EGP request API call to startPortout
+		String apiPortOutForNumpos = RestApiAutomation.requestToStartPortoutForFrance(msisdn, portOutId);
+		System.out.println(apiPortOutForNumpos);
+		
+
+		RestApiAutomation.httpPostTest(Constant.NUMPOS_INCOMING_REQUEST, apiPortOutForNumpos);
+		
+		System.out.println("First portout request is processed");
+		
+		// Finish port out
+		processId = MVNOProjectSpecific.verifyPortOutIsInitiatedInNumpos(msisdn);
+		System.out.println("Process ID: "+processId);
+		
+		FranceProjectSpecific.checkIfActionExistsWithProcessId(processId, "pONumPos");
+		
+		boolean portoutFinish = FranceProjectSpecific.processpONumPos(processId, msisdn, portOutId);
+		Assert.assertTrue(portoutFinish);
+		
+		boolean portOutProvisioning = FranceProjectSpecific.portOutProvisioningIsDone(processId);
+		Assert.assertTrue(portOutProvisioning);
+		
+		// check for the porting status
+		boolean portOutFinish = FranceProjectSpecific.processPortOutFinishIsDone(processId);
+		Assert.assertTrue(portOutFinish);
+		Reporter.log(String.format("The customer with msisdn %s is ported out", msisdn));
+	}
+}

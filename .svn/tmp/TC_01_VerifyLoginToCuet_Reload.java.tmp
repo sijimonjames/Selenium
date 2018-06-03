@@ -1,0 +1,218 @@
+package com.acneuro.test.automation.cuet_reload_commands_tests;
+
+import java.io.File;
+import java.io.IOException;
+import java.sql.ResultSet;
+
+import org.apache.commons.io.FileUtils;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Actions;
+import org.testng.Assert;
+import org.testng.Reporter;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.db_connection_libraries.DBUtils;
+import com.acneuro.test.automation.db_connection_libraries.OracleJdbcConnection;
+import com.acneuro.test.automation.libraries.ConfigLib;
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific;
+
+public class TC_01_VerifyLoginToCuet_Reload extends ConfigLib {
+
+	private static String customerNumber = "to be found";
+	private static String customerId = "to be found";
+	private static String emailId = "to be found";
+	private static String msisdn = "to be found";
+	private static String orderNumber = "to be found";
+	private static String screenShotPath = ".//ScreenShots/CUET_R";
+
+	@Test(priority = 1)
+	public void Login_to_CUET_R_Load_Balancer() throws IOException {
+
+		// clear the directory
+		FileUtils.deleteDirectory(new File(screenShotPath));
+
+		String alfredURL1 = "https://ams-uatalfred";
+		// Find the latest active customer
+		latestCustomerDetailsFromCRMdatabase();
+		// Login To Cuet-R
+		loginToCuetR(alfredURL1);
+		AccountLevelVerification();
+		MVNOProjectSpecific.takeScreenShot(screenShotPath + "/Load_Balancer_Account_Level_page.png");
+		orderLevelVerification();
+		MVNOProjectSpecific.takeScreenShot(screenShotPath + "/Load_Balancer_Order_Level_page.png");
+		subscriptionLevelVerification();
+		MVNOProjectSpecific.takeScreenShot(screenShotPath + "/Load_Balancer_Subscription_Level_page.png");
+	}
+
+	@Test(priority = 2)
+	public void Login_to_CUET_R_01() {
+
+		String alfredURL = "http://ams-uatalfred-01";
+		// Find the latest active customer
+		latestCustomerDetailsFromCRMdatabase();
+		// Login To Cuet-R
+		loginToCuetR(alfredURL);
+		AccountLevelVerification();
+		MVNOProjectSpecific.takeScreenShot(screenShotPath + "/Alfred01_Account_Level_page.png");
+		orderLevelVerification();
+		MVNOProjectSpecific.takeScreenShot(screenShotPath + "/Alfred01_Order_Level_page.png");
+		subscriptionLevelVerification();
+		MVNOProjectSpecific.takeScreenShot(screenShotPath + "/Alfred01_Subscription_Level_page.png");
+	}
+
+	@Test(priority = 3)
+	public void Login_to_CUET_R_02() {
+
+		String alfredURL = "http://ams-uatalfred-02";
+		// Find the latest active customer
+		latestCustomerDetailsFromCRMdatabase();
+		// Login To Cuet-R
+		loginToCuetR(alfredURL);
+		AccountLevelVerification();
+		MVNOProjectSpecific.takeScreenShot(screenShotPath + "/Alfred02_Account_Level_page.png");
+		orderLevelVerification();
+		MVNOProjectSpecific.takeScreenShot(screenShotPath + "/Alfred02_Order_Level_page.png");
+		subscriptionLevelVerification();
+		MVNOProjectSpecific.takeScreenShot(screenShotPath + "/Alfred02_Subscription_Level_page.png");
+	}
+
+	private static void latestCustomerDetailsFromCRMdatabase() {
+		try {
+			String queryCinProducts = DBUtils.queryFRCinProductTableWithMaxCinProductnumber();
+			ResultSet resultCinProducts = OracleJdbcConnection.crmDatabaseSelectQuery(queryCinProducts);
+			while (resultCinProducts.next()) {
+				customerNumber = resultCinProducts.getString("CUSTOMER_NUMBER");
+				msisdn = resultCinProducts.getString("ATTRIBUTE1");
+				customerId = resultCinProducts.getString("CUSTOMER_ID");
+				System.out.println("Customer Number: " + customerNumber);
+				System.out.println("Customer ID: " + customerId);
+				Reporter.log("Customer Number: " + customerNumber);
+			}
+
+			String queryCustCustomers = DBUtils.queryLatestExistingCustomerEmailId(customerNumber);
+			ResultSet resultCustCustomers = OracleJdbcConnection.crmDatabaseSelectQuery(queryCustCustomers);
+			while (resultCustCustomers.next()) {
+				emailId = resultCustCustomers.getString("EMAIL_ADDRESS");
+				System.out.println("Email_ID: " + emailId);
+				Reporter.log("Email_ID: " + emailId);
+			}
+			// Find Order Id
+			String queryOrdOrders = queryOrderNumberFromCustomerId(customerId);
+			ResultSet getOrderNumber = OracleJdbcConnection.crmDatabaseSelectQuery(queryOrdOrders);
+			while (getOrderNumber.next()) {
+				orderNumber = getOrderNumber.getString("ORD_NUMBER");
+				System.out.println("ORDER NUMBER: " + orderNumber);
+				Reporter.log("Email_ID: " + emailId);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static void loginToCuetR(String alfredURL) {
+		// Get the URL of CUET-R
+		// driver.get("http://ams-uatalfred-01/index.html");
+		try {
+			driver.get(alfredURL);
+			Thread.sleep(5000);
+			// Enter the username and password for the CUET-R
+			driver.findElement(By.xpath("//*[@id='loginusername-inputEl']")).sendKeys(Constant.COMMON_USERNAME);
+			driver.findElement(By.xpath("//*[@id='loginpassword-inputEl']")).sendKeys(Constant.COMMON_PASSWORD);
+			Thread.sleep(2000);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static void AccountLevelVerification() {
+		try {
+			driver.findElement(
+					By.cssSelector("[style*='back'][class*='x-btn-icon-el x-btn-icon-el-default-toolbar-small']"))
+					.click();
+			// Verify successful Login by verifying CUET tab
+			// Check the 'CUET' button
+			driver.findElement(By.xpath("//*[@id='cuetbut-btnIconEl']")).click();
+			// Search & Select
+			driver.findElement(By.xpath("//*[@id='searchfieldcus-inputEl']")).sendKeys(customerNumber);
+			Thread.sleep(2000);
+			driver.findElement(By.cssSelector("a[tabindex='0'][style*='width: 34px;']")).click();
+			Actions action = new Actions(driver);
+			WebElement element = driver.findElement(By.cssSelector("img[src*='images/countriescodespng/']"));
+			action.doubleClick(element).perform();
+			Thread.sleep(5000);
+			// driver.findElements(By.xpath("//*[@id='tableview-1038-record-173']/tbody/tr/td[7]/div"));
+			// verify the CustomerNumber of the Customer
+			String expectedText = String.format("Customer:Number:%s", customerNumber);
+			String actualText = "";
+			actualText = MVNOProjectSpecific.getAndVerifyText("//table/tbody/tr/td[1]/p/strong[4]");
+			System.out.println("Actual text: " + actualText);
+			Reporter.log("Actual text: " + actualText);
+			Assert.assertEquals(actualText, expectedText);
+			// Verify the Email Address of the Customer
+			String getsomething = driver.findElement(By.xpath("//table/tbody/tr/td[1]/p")).getText();
+			String getSomethinginOneLine = getsomething.replaceAll("\\s+", " ");
+			Assert.assertTrue(getSomethinginOneLine.contains(emailId));
+
+			Thread.sleep(3000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static void orderLevelVerification() {
+		try {
+			String expectedOrderNumberText = String.format("ORD Number : %s", orderNumber);
+			// Click on Order
+			WebElement order = driver.findElement(By.xpath(String.format("//*[contains(text(), '%s')]", orderNumber)));
+			Actions action = new Actions(driver);
+			action.doubleClick(order).perform();
+			Thread.sleep(5000);
+			// get the MSISDN text
+			String actualOrderNumberText = MVNOProjectSpecific.getAndVerifyText("//div/table/tbody/tr/td[1]/strong[4]");
+
+			Assert.assertEquals(actualOrderNumberText, expectedOrderNumberText);
+
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static void subscriptionLevelVerification() {
+		try {
+			// Click on subscriptions
+			driver.findElement(By.xpath("//*[contains(text(), 'Subscriptions')]")).click();
+
+			Actions action = new Actions(driver);
+			// Double Click on Subscription
+			WebElement element = driver.findElement(By.xpath("//*[contains(text(), 'MBSUBSCRIPTION')]"));
+			action.doubleClick(element).perform();
+			Thread.sleep(5000);
+			// get the MSISDN text
+			String msisdnLocation = "//div/table/tbody/tr/td/ul/li[1]/p/span/strong";
+			String msisndText = MVNOProjectSpecific.getAndVerifyText(msisdnLocation);
+			System.out.println(msisndText);
+
+			String actualMsisdnText = String.format("MSISDN : %s", msisdn);
+			Assert.assertEquals(msisndText, actualMsisdnText);
+
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static String queryOrderNumberFromCustomerId(String customerId) {
+		return "SELECT * FROM ORD_ORDERS WHERE ID = (SELECT MAX(ID) FROM ORD_ORDERS WHERE CUSTOMER_ID = '" + customerId
+				+ "' AND STATUS='COMPLETED')";
+	}
+
+	@AfterMethod
+	public static void postCondition() {
+		driver.quit();
+		// System.err.println("Webpage is closed down \n" + "Rest of the Cuet-R
+		// Tests will be done with CUET-R Commands");
+		Reporter.log("All other Cuet-R Tests will be done with CUET-R Commands");
+	}
+}

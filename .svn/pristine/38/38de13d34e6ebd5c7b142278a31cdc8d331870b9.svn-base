@@ -1,0 +1,59 @@
+package com.acneuro.test.automation.uk_workflow_tests;
+
+import org.junit.Assert;
+import org.testng.Reporter;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.libraries.ConfigLib;
+import com.acneuro.test.automation.libraries.Generic;
+
+import mvno_project_library.UKProjectSpecific;
+
+public class TC_8_UK_SIM_Replacement_Other extends ConfigLib {
+
+	@Test
+	public void simReplacementOther() {
+
+		// Select UK URL
+		String ukURL = Generic.urlSelection("UK");
+		driver.get(ukURL);
+
+		String reasonForReplacement = "OTHER";
+		String joiNumber = "";
+		String orderID = "";
+		// Step 1: Login to MyJOi with Active user id
+		joiNumber = UKProjectSpecific.LoginToUKMyJoiWithActiveSubscription();
+		System.out.println("Joi Number: " + joiNumber);
+		// Step 5: My Subscriptions > find the same active subscription > My
+		// Settings
+		UKProjectSpecific.ukManageSettingsFromSubscriptions(joiNumber);
+		// Step 7: My settings > 'Replace Sim'> Lost Sim > check simType >
+		// Submit, verify the submit message
+		UKProjectSpecific.selectAndSubmitReplaceSimFromMySettings(reasonForReplacement);
+		driver.quit();
+		orderID = UKProjectSpecific.simReplacementOrderdetails(joiNumber);
+		Reporter.log(reasonForReplacement + " SIM Replacement Order ID: " + orderID, true);
+		// Shipping of New SIM with a different ICC ID
+		boolean shipWaitIsProcessed = UKProjectSpecific.processShipWait(orderID, "simReplacementShipWait");
+		// Test is failed if shipping is not processed
+		Assert.assertTrue(shipWaitIsProcessed);
+		// Login and Activation of SIM
+		boolean simActivationAction = UKProjectSpecific.checkIfActionExistsForOrder(orderID,
+				"simReplacementActivation");
+		Assert.assertTrue(simActivationAction);
+		UKProjectSpecific.LoginToUKMyJoiWithMsisdn(joiNumber);
+		UKProjectSpecific.activationOfSIMReplacement(reasonForReplacement);
+
+		// Fixing all provisioning user task
+		UKProjectSpecific.simReplacementActivationByProvisioningUsertaskFix(orderID, reasonForReplacement);
+		// Check for action "simReplacementFinish" is "SUCCESS"
+		boolean simOrderIsDone = UKProjectSpecific.checkForSimReplacementOrderIsDone(orderID);
+		Assert.assertTrue(simOrderIsDone);
+		// Verify CIN_PRODUCT with order id, should be Active
+		boolean verifyProductIsActive = UKProjectSpecific.verifyCinProductIsActive(orderID);
+		Assert.assertTrue(verifyProductIsActive);
+		Reporter.getOutput();
+
+	}
+
+}

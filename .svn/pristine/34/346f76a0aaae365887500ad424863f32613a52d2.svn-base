@@ -1,0 +1,30 @@
+package com.acneuro.test.automation.uk_workflow_tests;
+
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.libraries.FranceProjectSpecific;
+
+public class Testcase1 {
+
+	@Test
+	public static void Connection_Fee() {
+
+		FranceProjectSpecific.LoginToMyJoiFrance();
+		FranceProjectSpecific.selectLibertyOrderFromOurOffer();
+		FranceProjectSpecific.joiLibertyPricePlan();
+		
+		String Conn_fee = FranceProjectSpecific.getAndVerifyText("//*[@id='receipt']/ul/li[2]/ul/li[3]/span");
+		Assert.assertEquals(Conn_fee, Constant.FR_CONNECTION_FEE);
+		String tolal_amount = FranceProjectSpecific.getAndVerifyText("//*[@id='receipt']/ul/li[2]/div/p/span");
+		Assert.assertEquals(tolal_amount, Constant.FR_LIBERTY_TOTAL_PRICE);
+		
+		FranceProjectSpecific.joiEgalittePricePlan();
+		String conn_fee_egalitte = FranceProjectSpecific.getAndVerifyText("//*[@id='receipt']/ul/li[2]/ul/li[3]/span");
+		Assert.assertEquals(conn_fee_egalitte, Constant.FR_CONNECTION_FEE);
+		String tolal_amount_egalitte = FranceProjectSpecific.getAndVerifyText("//*[@id='receipt']/ul/li[2]/div/p/span");
+		Assert.assertEquals(tolal_amount_egalitte, Constant.FR_EGALITTE_TOTAL_PRICE);
+		
+	}
+}

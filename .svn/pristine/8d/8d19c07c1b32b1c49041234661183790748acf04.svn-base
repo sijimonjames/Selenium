@@ -1,0 +1,172 @@
+package com.acneuro.test.automation.france_workflow_tests;
+
+import java.sql.ResultSet;
+import org.testng.Assert;
+import org.testng.Reporter;
+import org.testng.annotations.Test;
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.libraries.FranceEnglishConfigLib;
+import com.acneuro.test.automation.libraries.FranceProjectSpecific;
+import com.acneuro.test.automation.libraries.QueryUtils;
+import com.acneuro.test.automation.libraries.OracleJdbcConnection;
+
+public class TC_1_FranceEnglishCustomerActivation extends FranceEnglishConfigLib {
+
+	String orderId = "";
+	String orderNumber = "";
+	String taskId = ""; // Need task id to 'resolving_tasks'
+	String latestPriId = "";
+
+	@Test
+	public void CustomerActivation() {
+		// Checking the database for status="RESOLVING_TASKS"(sometimes "NEW")
+		// change this always to "RESOLVING_TASKS"
+
+		String orderNumber = this.account_creation();
+
+		try {
+			OracleJdbcConnection.crmDatabaseUpdateQuery(QueryUtils.queryUpdateOrderStatus(orderNumber));
+			System.out.println("Update Query 1");
+			ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(QueryUtils.queryOrderStatus(orderNumber));
+			while (resultSet.next()) {
+				this.orderId = resultSet.getString("ID");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		try {
+			ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(QueryUtils.queryTaskId(orderId));
+			while (resultSet.next()) {
+				this.taskId = resultSet.getString("ID");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		try {
+			ResultSet resultSet = OracleJdbcConnection.crmDatabaseSelectQuery(QueryUtils.querylatestProcessId(orderId));
+			while (resultSet.next()) {
+				latestPriId = resultSet.getString("max(PRI_ID)");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		// RESOLVING_TASKS API signal
+		try {
+			FranceProjectSpecific.resolvingTasksSignal(latestPriId, taskId);
+		} catch (Exception e) {
+
+			e.printStackTrace();
+		}
+
+		// here we check if upfront payment action created
+		boolean checkActionUpfrontPayment = FranceProjectSpecific.checkIfActionExists(orderId, "ofUpfrontPaymentWait");
+		Assert.assertTrue(checkActionUpfrontPayment);
+
+		// here we check if upfront payment is finished successfully
+		boolean upfrontPaymentActionIsDone = FranceProjectSpecific.processUpfrontPayment(orderId);
+		Assert.assertTrue(upfrontPaymentActionIsDone);
+
+		// here we check if shipping signal action is created
+		boolean checkActionmbShipWaiting = FranceProjectSpecific.checkIfActionExists(orderId, "mbShipWaiting");
+		Assert.assertTrue(checkActionmbShipWaiting);
+
+		// here we check if upfront payment is finished successfully
+		boolean mbShipWaitingIsDone = FranceProjectSpecific.processShipWait(orderId);
+		Assert.assertTrue(mbShipWaitingIsDone);
+
+		// here we check if SIM activation action is created
+		boolean checkActionmbSimActivation = FranceProjectSpecific.checkIfActionExists(orderId, "mbSimActivation");
+		Assert.assertTrue(checkActionmbSimActivation);
+
+		// If SIM activation action present activate the SIM in MYJOi
+		FranceProjectSpecific.LoginToMyJoiFrance();
+		FranceProjectSpecific.ActivateSimAfterLogin();
+		Reporter.log("SIM activation is completed using MyJOi", true);
+
+		boolean checkActionmbProvisionWait = FranceProjectSpecific.checkIfActionExists(orderId, "mbProvisionWait");
+		Assert.assertTrue(checkActionmbProvisionWait);
+
+		FranceProjectSpecific.provisioningDuringActivationOfOrders(orderId);
+
+	}
+
+	public String account_creation() {
+
+		// Step 1: verify the home page title
+		FranceProjectSpecific.verifyTitleOfPage("JOi Telecom");
+		// Step 2: Click on order button
+		FranceProjectSpecific.order_creation_page();
+		// step 3:check the radio button 'Joi Liberty' ----PRICE PLAN SELECTION
+		try {
+			FranceProjectSpecific.Joi_Liberty_price_plan();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		FranceProjectSpecific.combiSimTypeSelection();
+		// step 4: Click on 'Add To Basket' on same page,
+		// this can be used for any price plan
+		FranceProjectSpecific.Our_Offer_add_to_basket();
+		// step 5: Click on 'Add To Basket' without Number porting
+		try {
+			FranceProjectSpecific.add_to_basket_without_porting();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		// Step 6: click on "check out / Continue for Fr"
+		FranceProjectSpecific.Check_Out_Order();
+		FranceProjectSpecific.FranceCustomerAccountCreation();
+		FranceProjectSpecific.Customer_details("Mrs.", "ACNEuro", "MVNO", "France Automation", "01011940",
+				"0123467890");
+		FranceProjectSpecific.uploadCustomerIdCopy();
+		try {
+			FranceProjectSpecific.Contact_Billing_Adress("75007", "38", "1");
+			Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		// Update the excel sheet with a new number
+
+		FranceProjectSpecific.verifyTitleOfPage("JOi Account Created");
+//		FranceProjectSpecific.updateEmailIInExcelSheet();
+		try {
+			FranceProjectSpecific.continueButtonAfterAccountCreation();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		// Subscription details - Subscription is for same customer
+		try {
+			FranceProjectSpecific.continueToStep3WithoutPorting();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		// France-Bank Account details
+		try {
+			FranceProjectSpecific.franceBankDetailsAndClickToContinue(Constant.FrIbanNumber, Constant.FrSwiftCode);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		try {
+			FranceProjectSpecific.Order_summary_page("999999");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		try {
+			FranceProjectSpecific.Payment_Datacash(Constant.Card_Type1, Constant.Type1_CC_number, "2018",
+					Constant.Type1_CC_CVV);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		FranceProjectSpecific.verifyTitleOfPage("Your JOi Order Confirmation");
+		FranceProjectSpecific.takeScreenShot("C:/testing/workspace/Screenshots/mvno/Order_Creation.png");
+		String getOrderNumberWithHash = FranceProjectSpecific.get_and_Verify_Text("//div/article/section/p[2]/strong");
+		this.orderNumber = getOrderNumberWithHash.substring(1);
+		System.out.println("Order is created successfully!! France Order number is: " + orderNumber);
+		driver.quit();
+		Reporter.log("Order is created successfully. France Order number is: " + orderNumber, true);
+		return orderNumber;
+	}
+
+}

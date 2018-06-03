@@ -1,0 +1,228 @@
+package com.acneuro.test.automation.fileslibrary;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.apache.commons.io.FileUtils;
+
+import com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific;
+
+/**
+ * @author sijimon james
+ */
+public class FileUtilsLibrary {
+
+	private static String dateTime = "";
+	// private static String dateTime = MVNOProjectSpecific.dateToString(new
+	// Date(), "yyyyMMddhhmmss");
+	// private static String date = MVNOProjectSpecific.dateToString(new Date(),
+	// "ddMMyy");
+	private static String dueAmount = "";
+	private static String rejectionreason = "";
+
+	public static File csvFileForCuesPaymentMethodRejection(String customerNumber, String diseAccountnumber,
+			String country, String paymentMode, String rejectionReason) {
+
+		dateTime = MVNOProjectSpecific.dateToString(new Date(), "yyyyMMddhhmmss");
+		String commaDelimiter = ",";
+		File myFile = null;
+
+		try {
+			List<FileEntities_Rejection> listProducts = new ArrayList<FileEntities_Rejection>();
+			listProducts.add(
+					new FileEntities_Rejection(customerNumber, diseAccountnumber, "120.99", rejectionReason, country));
+
+			// Create a new directory if not exists
+
+			String directory = String.format("\\files\\CC_Retry_Files\\%s\\", country);
+			String filename = String.format("\\CuES_Rejected_Payment_%s_%s.csv", country, dateTime);
+			myFile = new File(System.getProperty("user.dir") + directory + filename);
+			if (!myFile.getParentFile().exists()) {
+				boolean result = false;
+
+				try {
+					myFile.getParentFile().mkdirs();
+					result = true;
+				} catch (SecurityException se) {
+					// handle it
+					se.printStackTrace();
+				}
+				if (result) {
+					System.out.println(String.format("New Directory created for %s", country));
+				}
+			} else {
+				// Remove the existing files
+				FileUtils.cleanDirectory(new File(System.getProperty("user.dir") + directory));
+			}
+
+			FileWriter filewriter = new FileWriter(myFile);
+			for (FileEntities_Rejection add : listProducts) {
+				filewriter.append(add.getDiseAccountnumber());
+				filewriter.append(commaDelimiter);
+				filewriter.append(add.getCustomerNumber());
+				filewriter.append(commaDelimiter);
+				filewriter.append(add.getDueAmount());
+				filewriter.append(commaDelimiter);
+				filewriter.append(paymentMode);
+				filewriter.append(commaDelimiter);
+				filewriter.append(add.getRejectionreason());
+				filewriter.flush();
+				filewriter.close();
+			}
+
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+		}
+		return myFile;
+	}
+
+	public static File csvFileForCCRetryOK(String customerNumber, String diseAccountnumber, String country) {
+		String commaDelimiter = ",";
+		File myFile = null;
+		dateTime = MVNOProjectSpecific.dateToString(new Date(), "yyyyMMddhhmmss");
+		try {
+			List<FileEntities_Rejection> listProducts = new ArrayList<FileEntities_Rejection>();
+			listProducts.add(
+					new FileEntities_Rejection(customerNumber, diseAccountnumber, dueAmount, rejectionreason, country));
+
+			// Create a new directory if not exists
+			String directory = String.format("\\files\\CC_Retry_Files\\%s\\", country);
+			String filename = String.format("\\CuES_CC_RETRY_OK_%s_%s.csv", country, dateTime);
+			myFile = new File(System.getProperty("user.dir") + directory + filename);
+			if (!myFile.getParentFile().exists()) {
+				boolean result = false;
+
+				try {
+					myFile.getParentFile().mkdirs();
+					result = true;
+				} catch (SecurityException se) {
+					// handle it
+					se.printStackTrace();
+				}
+				if (result) {
+					System.out.println(String.format("New Directory created for %s", country));
+				}
+			}
+
+			FileWriter filewriter = new FileWriter(myFile);
+			for (FileEntities_Rejection add : listProducts) {
+				filewriter.append(add.getDiseAccountnumber());
+				filewriter.append(commaDelimiter);
+				filewriter.append(add.getCustomerNumber());
+				filewriter.append(commaDelimiter);
+				filewriter.append(add.getCountry());
+				filewriter.flush();
+				filewriter.close();
+			}
+
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+		}
+		return myFile;
+	}
+
+	public static File csvFileForDirectDebitActivation(String customerNumber, String country) {
+		File myFile = null;
+		String newLineSeparator = "\n";
+		dateTime = MVNOProjectSpecific.dateToString(new Date(), "yyyyMMddhhmmss");
+		// String fileHeader = ""; //No file header needed, if need use this
+		try {
+
+			List<FileEntities_Rejection> listProducts = new ArrayList<FileEntities_Rejection>();
+			listProducts.add(new FileEntities_Rejection());
+
+			String directory = String.format("\\files\\DD_Activation_Files\\%s\\", country);
+			String filename = String.format("\\OCX_001_581953_CUST_%s_25150836.csv", dateTime);
+			myFile = new File(System.getProperty("user.dir") + directory + filename);
+			if (!myFile.getParentFile().exists()) {
+				boolean result = false;
+				// create the folder if does not exists
+				try {
+					myFile.getParentFile().mkdirs();
+					result = true;
+				} catch (SecurityException se) {
+					se.printStackTrace();
+				}
+				if (result) {
+					System.out.println(String.format("New Directory created for %s", country));
+				}
+			} else {
+				// Remove the existing files
+				FileUtils.cleanDirectory(new File(System.getProperty("user.dir") + directory));
+			}
+
+			FileWriter filewriter = new FileWriter(myFile);
+			for (@SuppressWarnings("unused")
+			FileEntities_Rejection add : listProducts) {
+				filewriter.append(FileEntities_Rejection.ocxFileContentLine1());
+				filewriter.append(newLineSeparator);
+				filewriter.append(FileEntities_Rejection.ocxFileContentLine2(customerNumber));
+				filewriter.flush();
+				filewriter.close();
+			}
+
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+		}
+		return myFile;
+	}
+
+	public static File csvFileForDunningRejection(String diseAccountnumber, String customerNumber, String dunningStage,
+			String dunningAction, String amount, String country) {
+		String commaDelimiter = ",";
+		File myFile = null;
+		String dunningDate = MVNOProjectSpecific.dateToString(new Date(), "ddMMyyhhmmss");
+		try {
+			List<FileEntities_Dunning> listProducts = new ArrayList<FileEntities_Dunning>();
+			listProducts.add(new FileEntities_Dunning(diseAccountnumber, customerNumber, dunningStage, dunningAction,
+					amount, country, "GIRO"));
+
+			// Create a new directory if not exists
+			String directory = String.format("\\files\\Dunning_Files_\\%s\\", country);
+			String filename = String.format("\\CuES_DUNNING_%s%s.csv", country, dunningDate);
+			myFile = new File(System.getProperty("user.dir") + directory + filename);
+			if (!myFile.getParentFile().exists()) {
+				boolean result = false;
+				try {
+					myFile.getParentFile().mkdirs();
+					result = true;
+				} catch (SecurityException se) {
+					// handle it
+					se.printStackTrace();
+				}
+				if (result) {
+					System.out.println(String.format("New Directory created for %s", country));
+				}
+			} else {
+				// Remove the existing files
+				FileUtils.cleanDirectory(new File(System.getProperty("user.dir") + directory));
+			}
+
+			FileWriter filewriter = new FileWriter(myFile);
+			for (FileEntities_Dunning add : listProducts) {
+				filewriter.append(add.getDiseAccountnumber());
+				filewriter.append(commaDelimiter);
+				filewriter.append(add.getCustomerNumber());
+				filewriter.append(commaDelimiter);
+				filewriter.append(add.getDunningStage());
+				filewriter.append(commaDelimiter);
+				filewriter.append(add.getDunningAction());
+				filewriter.append(commaDelimiter);
+				filewriter.append(add.getAmount());
+				filewriter.append(commaDelimiter);
+				filewriter.append(add.getCountry());
+				filewriter.append(commaDelimiter);
+				filewriter.append(add.getPaymentMode());
+				filewriter.flush();
+				filewriter.close();
+			}
+
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+		}
+		return myFile;
+	}
+}

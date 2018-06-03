@@ -1,0 +1,93 @@
+package com.acneuro.test.automation.france_workflow_tests;
+
+
+import org.testng.Assert;
+import org.testng.Reporter;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.libraries.ConfigLib;
+import com.acneuro.test.automation.libraries.Constant;
+
+import mvno_project_library.FranceProjectSpecific;
+import mvno_project_library.MVNOProjectSpecific;
+
+public class TC_03_FranceAddLibertyPricePlanOrderToExistingCustomer {
+
+	public static String orderCreationForExistingCustomer() {
+
+		FranceProjectSpecific.LoginToMyJoiFrance();
+		FranceProjectSpecific.selectLibertyOrderFromOurOffer();
+		MVNOProjectSpecific.pricePlanSelection("joiLibertyFR");;
+		FranceProjectSpecific.combiSimTypeSelectionForLiberty();
+		FranceProjectSpecific.ourOfferPageAddToBasketButton();
+		FranceProjectSpecific.add_to_basket_without_porting();
+		FranceProjectSpecific.checkOutOrder();
+		FranceProjectSpecific.continueToStep3WithoutPorting();
+		FranceProjectSpecific.orderSummaryPageForExitstingCustomer("99999");
+		FranceProjectSpecific.Payment_Datacash(Constant.Card_Type1, Constant.Type1_CC_number, "2018",
+				Constant.Type1_CC_CVV);
+		MVNOProjectSpecific.verifyTitleOfPage("Your JOi Order Confirmation");
+		MVNOProjectSpecific.takeScreenShot("C:/testing/workspace/Screenshots/mvno/France_Order_Creation.png");
+		String getOrderNumber = MVNOProjectSpecific.getAndVerifyText("//div/article/section/p[2]/strong");
+		String orderNumber = getOrderNumber.substring(1);
+		System.out.println("Order is created successfully!! Your Order number is: " + orderNumber);
+		ConfigLib.driver.quit();
+		return orderNumber;
+	}
+
+	String orderId = "";
+	String orderNumber = "";
+	String taskId = ""; // Need task id to 'resolving_tasks'
+	String latestPriId = "";
+
+	@Test
+	public void CustomerActivation() {
+		// Checking the database for status="RESOLVING_TASKS"(sometimes "NEW")
+		// change this always to "RESOLVING_TASKS"
+
+		String orderNumber = orderCreationForExistingCustomer();
+
+		/*
+		 * Fail the test if Order is in any other status other than resolving
+		 * tasks
+		 */
+
+		// verify for resolving tasks
+		Assert.assertTrue(MVNOProjectSpecific.CheckStatusOfOrder(orderNumber));
+
+		// RESOLVING_TASKS API signal
+		orderId = MVNOProjectSpecific.processResolvingTasksSignal(orderNumber);
+
+		// here we check if upfront payment action created
+		boolean checkActionUpfrontPayment = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId,
+				"ofUpfrontPaymentWait");
+		Assert.assertTrue(checkActionUpfrontPayment);
+
+		// here we check if upfront payment is finished successfully
+		boolean upfrontPaymentActionIsDone = MVNOProjectSpecific.processUpfrontPayment(orderId);
+		Assert.assertTrue(upfrontPaymentActionIsDone);
+
+		// here we check if shipping signal action is created
+		boolean checkActionmbShipWaiting = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId, "mbShipWaiting");
+		Assert.assertTrue(checkActionmbShipWaiting);
+
+		// here we check if upfront payment is finished successfully
+		boolean mbShipWaitingIsDone = FranceProjectSpecific.processShipWait(orderId, "mbShipWaiting");
+		Assert.assertTrue(mbShipWaitingIsDone);
+
+		// here we check if SIM activation action is created
+		boolean checkActionmbSimActivation = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId, "mbSimActivation");
+		Assert.assertTrue(checkActionmbSimActivation);
+
+		// If SIM activation action present activate the SIM in MYJOi
+		FranceProjectSpecific.LoginToMyJoiFrance();
+		FranceProjectSpecific.ActivateSimAfterLogin();
+		Reporter.log("SIM activation is completed using MyJOi", true);
+
+		boolean checkActionmbProvisionWait = MVNOProjectSpecific.checkIfActionExistsForOrder(orderId, "mbProvisionWait");
+		Assert.assertTrue(checkActionmbProvisionWait);
+
+		FranceProjectSpecific.provisioningDuringActivationOfOrders(orderId);
+
+	}
+}

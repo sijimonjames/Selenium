@@ -1,0 +1,150 @@
+
+package com.acneuro.test.automation.uk_workflow_tests;
+
+import org.testng.Reporter;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.libraries.ConfigLib;
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.libraries.Generic;
+
+import mvno_project_library.MVNOProjectSpecific;
+import mvno_project_library.UKProjectSpecific;
+
+/**
+ * @author sijames
+ *
+ */
+public class TC_09_UK_Liberty_Price_Plan_Fee_Test extends ConfigLib {
+
+	@Test
+	public void connectionFeeTestProductSelectionPage() {
+
+		// get the URL of France English website
+		String frenchURL = Generic.urlSelection("UK");
+		driver.get(frenchURL);
+
+		// Hide the cookie message
+		MVNOProjectSpecific.hideCookieMessage();
+
+		// Select the price plan
+		MVNOProjectSpecific.orderCreationPageInEnglish();
+		UKProjectSpecific.Joi_Liberty_price_plan();
+
+		/*
+		 * verify fees on Mobile Subscription Offer page, after Price plan and
+		 * sim type is selected
+		 */
+		System.out.println("Fees in Offer page");
+		MVNOProjectSpecific.VariousFeesForFranceJOiLiberty(Constant.UK_Liberty_FEE, Constant.UK_CONNECTION_FEE,
+				Constant.UK_LIBERTY_TOTAL_PRICE);
+		System.out.println("Fees are as expected in Offer page");
+		MVNOProjectSpecific.takeScreenShot(".//ScreenShots/Connection_Fee_Tests/UK/1_Liberty_Offer_Page.png");
+		/*
+		 * verify fees on additional product page
+		 */
+		MVNOProjectSpecific.ourOfferPageAddToBasketButton();
+		System.out.println("Fees in additional products page");
+		MVNOProjectSpecific.VariousFeesForFranceJOiLiberty(Constant.UK_Liberty_FEE, Constant.UK_CONNECTION_FEE,
+				Constant.UK_LIBERTY_TOTAL_PRICE);
+		System.out.println("Fees are as expected in additional products page");
+		MVNOProjectSpecific
+				.takeScreenShot(".//ScreenShots/Connection_Fee_Tests/UK/2_Liberty_additional_products_page.png");
+
+		/*
+		 * verify fees on offer basket page
+		 */
+		MVNOProjectSpecific.add_to_basket_without_porting();
+		System.out.println("Fees in offer basket page");
+		MVNOProjectSpecific.VariousFeesForFranceJOiLiberty(Constant.UK_Liberty_FEE, Constant.UK_CONNECTION_FEE,
+				Constant.UK_LIBERTY_TOTAL_PRICE);
+		System.out.println("Fees are as expected in offer basket page");
+		MVNOProjectSpecific.takeScreenShot(".//ScreenShots/Connection_Fee_Tests/UK/3_Liberty_offer_basket_page.png");
+
+		/*
+		 * verify fees on create account page
+		 */
+		MVNOProjectSpecific.checkOutOrder();
+		System.out.println("Fees in create account page");
+		MVNOProjectSpecific.VariousFeesForFranceJOiLiberty(Constant.UK_Liberty_FEE, Constant.UK_CONNECTION_FEE,
+				Constant.UK_LIBERTY_TOTAL_PRICE);
+		System.out.println("Fees are as expected in create account page");
+		MVNOProjectSpecific.takeScreenShot(".//ScreenShots/Connection_Fee_Tests/UK/4_Liberty_create_account_page.png");
+		/*
+		 * verify fees on Create account-Personal details page
+		 */
+		MVNOProjectSpecific.FranceCustomerAccountCreation();
+		System.out.println("Fees in Create account-Personal details page");
+		MVNOProjectSpecific.VariousFeesForFranceJOiLiberty(Constant.UK_Liberty_FEE, Constant.UK_CONNECTION_FEE,
+				Constant.UK_LIBERTY_TOTAL_PRICE);
+		System.out.println("Fees are as expected in Create account-Personal details page");
+		MVNOProjectSpecific
+				.takeScreenShot(".//ScreenShots/Connection_Fee_Tests/UK/5_Liberty_account_Personal_details_page.png");
+
+		/*
+		 * verify fees on account creation success page
+		 */
+		MVNOProjectSpecific.Customer_details("Mrs.", "ACNEuro", "MVNO", "Fees Automation", "01121960", "0123467890");
+		MVNOProjectSpecific.uploadCustomerIdCopy();
+		MVNOProjectSpecific.contactAndBillingAdress("75007", "38", "1");
+
+		System.out.println("Fees in account creation success page");
+		MVNOProjectSpecific.VariousFeesForFranceJOiLiberty(Constant.UK_Liberty_FEE, Constant.UK_CONNECTION_FEE,
+				Constant.UK_LIBERTY_TOTAL_PRICE);
+		System.out.println("Fees are as expected in account creation success page");
+		MVNOProjectSpecific
+				.takeScreenShot(".//ScreenShots/Connection_Fee_Tests/UK/6_Liberty_account_creation_success_page.png");
+
+		/*
+		 * verify fees on mobile subscription details page
+		 */
+		MVNOProjectSpecific.continueButtonAfterAccountCreation();
+
+		System.out.println("Fees in mobile subscription details page");
+		MVNOProjectSpecific.VariousFeesForFranceJOiLiberty(Constant.UK_Liberty_FEE, Constant.UK_CONNECTION_FEE,
+				Constant.UK_LIBERTY_TOTAL_PRICE);
+		System.out.println("Fees are as expected in mobile subscription details page");
+		MVNOProjectSpecific.takeScreenShot(
+				".//ScreenShots/Connection_Fee_Tests/UK/7_Liberty_mobile_subscription_details_page.png");
+
+		/*
+		 * verify fees on Payment details page
+		 */
+		MVNOProjectSpecific.continueToStep3WithoutPorting();
+
+		System.out.println("Fees in Payment details page");
+		MVNOProjectSpecific.VariousFeesForFranceJOiLiberty(Constant.UK_Liberty_FEE, Constant.UK_CONNECTION_FEE,
+				Constant.UK_LIBERTY_TOTAL_PRICE);
+		System.out.println("Fees are as expected in Payment details page");
+		MVNOProjectSpecific.takeScreenShot(".//ScreenShots/Connection_Fee_Tests/UK/8_Liberty_Payment_details_page.png");
+
+		/*
+		 * verify fees on Order summary page
+		 */
+		MVNOProjectSpecific.franceBankDetailsAndClickToContinue(Constant.FrIbanNumber, Constant.FrSwiftCode);
+
+		System.out.println("Fees in Order summary page");
+		MVNOProjectSpecific.VariousFeesForFranceJOiLiberty(Constant.UK_Liberty_FEE, Constant.UK_CONNECTION_FEE,
+				Constant.UK_LIBERTY_TOTAL_PRICE);
+		System.out.println("Fees are as expected in Order summary page");
+		MVNOProjectSpecific.takeScreenShot(".//ScreenShots/Connection_Fee_Tests/UK/9_Liberty_Order_summary_page.png");
+
+		// Payment page
+		MVNOProjectSpecific.orderSummaryPageForNewCustomer("999999");
+
+		System.out.println("Check total price in Payment page");
+		MVNOProjectSpecific.verifyPricePlanAmountInDatacashPage();
+		System.out.println("Total price is as expected in Payment page");
+		MVNOProjectSpecific.takeScreenShot(".//ScreenShots/Connection_Fee_Tests/UK/10_Liberty_Datacash_page.png");
+
+		// complete the order
+		MVNOProjectSpecific.Payment_Datacash(Constant.Card_Type1, Constant.Type1_CC_number, "2018",
+				Constant.Type1_CC_CVV);
+
+		// close the webpage
+		driver.quit();
+
+		Reporter.getOutput();
+
+	}
+}

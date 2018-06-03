@@ -1,0 +1,241 @@
+package com.acneuro.test.automation.france_workflow_tests;
+
+import static com.acneuro.test.automation.db_connection_libraries.DBUtils.*;
+import java.sql.ResultSet;
+
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.db_connection_libraries.DBUtils;
+import com.acneuro.test.automation.db_connection_libraries.OracleJdbcConnection;
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.libraries.RestApiAutomation;
+import com.acneuro.test.automation.mvno_project_library.FranceProjectSpecific;
+import com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific;
+import com.acneuro.test.automation.mvno_project_library.UKProjectSpecific;
+
+/*
+ * @Author: Sijimon James
+ * Test: Block and unblock Internet using MyJOi with 
+ */
+
+public class TC_11_FR_BlockOrUnblockInternet {
+
+	private static String myJoiNumber = "find during run time";
+	private static String country = "FR";
+	private static String processId = "find from cue_requested_table";
+	private static String cinProductId = "";
+
+	@Test(priority = 1)
+	public static void test_1_BlockOrUnblockInternet() {
+		processInternetBlockOrUnblock();
+		Assert.assertTrue(processsDataTariffAction());
+	}
+
+	@Test(priority = 2)
+	public static void test_2_BlockOrUnblockInternet() {
+
+		processInternetBlockOrUnblock();
+		Assert.assertTrue(processsDataTariffAction());
+	}
+
+	public static void processInternetBlockOrUnblock() {
+
+		String customerNumber = "";
+		String cinProductNumber = "";
+		String statusOfInternet = "";
+
+		try {
+			// FINDING LATEST CUSTOMER NUMBER
+			customerNumber = queryLatestCustomerNumber();
+			// FINDING CIN PRODUCT ID FROM THE CUSTOMER NUMBER
+			ResultSet getCinProductNumber = OracleJdbcConnection
+					.crmDatabaseSelectQuery(queryLatestCinProductnumber(customerNumber));
+			while (getCinProductNumber.next()) {
+				cinProductNumber = getCinProductNumber.getString("max(CIN_NUMBER)");
+			}
+			// CIN PRODUCT TABLE DETAILS
+			ResultSet getCinProductDetails = OracleJdbcConnection
+					.crmDatabaseSelectQuery(queryCinProductTableWithCinProductNumber(cinProductNumber));
+			while (getCinProductDetails.next()) {
+
+				cinProductId = getCinProductDetails.getString("ID");
+				myJoiNumber = getCinProductDetails.getString("ATTRIBUTE1");
+				System.out.println("CIN product ID: " + cinProductId);
+				System.out.println("MSISDN: " + myJoiNumber);
+			}
+			// SEARCHING STATUS OF INTERNET IN CIN PRODUCT MBSUB
+			ResultSet getStatusOfInternat = OracleJdbcConnection
+					.crmDatabaseSelectQuery(queryCinProductMBSUBtableDetails(cinProductId));
+			while (getStatusOfInternat.next()) {
+				statusOfInternet = getStatusOfInternat.getString("BLOCKING_INTERNET");
+			}
+
+			if (statusOfInternet.equalsIgnoreCase("AED")) {
+
+				System.out.println("The status of Internet is blocked, unblocking now using MyJOi....");
+				loginToManageSettings();
+				MVNOProjectSpecific.selectUnBlockInternetFromMyJoiSettings();
+				// UNBLOCK INTERNET USING MYJOI
+			} else if ((statusOfInternet.equalsIgnoreCase("DED"))) {
+
+				System.out.println("The status of Internet is not blocked, blocking now using MyJoi....");
+				loginToManageSettings();
+				MVNOProjectSpecific.selectBlockInternetFromMyJoiSettings();
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void loginToManageSettings() {
+
+		// LOGIN TO MYJOI
+		if (country.equalsIgnoreCase("UK")) {
+
+			UKProjectSpecific.LoginToUKMyJoiWithMsisdn(myJoiNumber);
+			UKProjectSpecific.ukManageSettingsFromSubscriptions(myJoiNumber);
+
+		} else if (country.equalsIgnoreCase("FR")) {
+
+			FranceProjectSpecific.LoginToFrMyJoiWithMsisdn(myJoiNumber);
+			FranceProjectSpecific.franceManageSettingsFromSubscriptions(myJoiNumber);
+		}
+	}
+
+	public static boolean processsDataTariffAction() {
+
+		String actionName = "";
+		String status = "";
+		String result = "";
+
+		try {
+			System.out.println(cinProductId);
+			// GET PROCESS ID
+			Assert.assertTrue(cue_Requested_Commands_Table());
+
+			// REMOVE THIS ONCE EVERYTHING WORKS
+			System.out.println(processId);
+
+			// check for ERROR_PROVISIONING_RES
+			boolean mbModifyDataTrafficAction = MVNOProjectSpecific.checkIfActionExistsWithProcessId(processId,
+					"mbModifyDataTrafficAction");
+			Assert.assertTrue(mbModifyDataTrafficAction);
+			ResultSet getActionInstances = OracleJdbcConnection.crmDatabaseSelectQuery(
+					queryActionInstanceWithProcessIdAndActionName(processId, "mbModifyDataTrafficAction"));
+			while (getActionInstances.next())
+
+			{
+				actionName = getActionInstances.getString("NAME");
+				status = getActionInstances.getString("STATUS");
+				result = getActionInstances.getString("RESULT");
+				if ("mbModifyDataTrafficAction".equals(actionName) && "FIN".equals(status) && "ERROR".equals(result)) {
+					Assert.assertTrue(MVNOProjectSpecific.checkIfActionExistsWithProcessId(processId,
+							"MBDataFailureUserTaskAction"));
+				}
+			}
+
+			for (int i = 0; i < Constant.DEFAULT_RETRY_COUNT; i++) {
+				ResultSet getActionInstancesforUserTask = OracleJdbcConnection.crmDatabaseSelectQuery(
+						queryActionInstanceWithProcessIdAndActionName(processId, "MBDataFailureUserTaskAction"));
+
+				while (getActionInstancesforUserTask.next()) {
+
+					actionName = getActionInstancesforUserTask.getString("NAME");
+					status = getActionInstancesforUserTask.getString("STATUS");
+					result = getActionInstancesforUserTask.getString("RESULT");
+
+					if ("MBDataFailureUserTaskAction".equals(actionName) && "WAI".equals(status)) {
+						System.out.println("MBDataFailureUserTaskAction is in WAI status");
+
+						// Create and send api request
+						String createErrorResAPI = RestApiAutomation.requestForERROR_PROVISIONING_RES(myJoiNumber,
+								processId, cinProductId);
+						System.out.println(createErrorResAPI);
+						RestApiAutomation.httpPostTest(Constant.CIN_EXECUTE, createErrorResAPI);
+						Thread.sleep(5000);
+					}
+					if ("MBDataFailureUserTaskAction".equals(actionName) && "FIN".equals(status)
+							&& "SKIP_PROVISIONING".equals(result)) {
+						System.out.println("MBDataFailureUserTaskAction action is finished");
+						return true;
+					}
+					if ("MBDataFailureUserTaskAction".equals(actionName) && "FIN".equals(status)
+							&& "ERROR".equals(result)) {
+						System.err.println("MBDataFailureUserTaskAction action finished in Error");
+						return false;
+					}
+					if ("MBDataFailureUserTaskAction".equals(actionName) && "ERR".equals(status)) {
+						System.err.println("MBDataFailureUserTaskAction action finished in Error");
+						return false;
+					}
+					Thread.sleep(Constant.DEFAULT_SHORT_SLEEP_TIME);
+				}
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+
+	}
+
+	public static String queryLatestCustomerNumber() {
+
+		String customerNumber = "";
+		ResultSet queryCustomerNumber = null;
+		try {
+			if (country.equals("FR")) {
+				queryCustomerNumber = OracleJdbcConnection
+						.crmDatabaseSelectQuery(DBUtils.queryMaxCustomerNumberFrCustomer());
+			} else if (country.equals("UK")) {
+				queryCustomerNumber = OracleJdbcConnection
+						.crmDatabaseSelectQuery(DBUtils.queryMaxCustomerNumberUKCustomer());
+			}
+
+			while (queryCustomerNumber.next()) {
+				customerNumber = queryCustomerNumber.getString("MAX_CUSTOMER_NUMBER");
+				System.out.println("New customer Number: " + customerNumber);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		// RETURNING EMAIL ID OF CUSTOMER
+		return customerNumber;
+	}
+
+	public static boolean cue_Requested_Commands_Table() {
+
+		// GET PROCESS ID
+		try {
+
+			for (int i = 0; i < 5; i++) {
+				System.err.println("CHECKING FOR THE PROCESS ID");
+
+				String queryCues_Commands = querySelectProcessIdFromCUE_COMMANDAndCIN_PRODUCT("ERROR_PROVISIONING_RES",
+						myJoiNumber);
+
+				// REMOVE THIS ONCE EVERYTHING WORKS
+				System.out.println(queryCues_Commands);
+
+				ResultSet getCueCommanddetails = OracleJdbcConnection.crmDatabaseSelectQuery(queryCues_Commands);
+				while (getCueCommanddetails.next()) {
+
+					processId = getCueCommanddetails.getString("PROCESS_ID");
+
+					if (!getCueCommanddetails.wasNull()) {
+						System.out.println("PROCESS ID: " + processId);
+
+						return true;
+					}
+				}
+				Thread.sleep(3000);
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+}

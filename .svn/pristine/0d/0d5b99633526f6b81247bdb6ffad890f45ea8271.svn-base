@@ -1,0 +1,116 @@
+package com.acneuro.test.automation.direct_debit_And_Dunning_Tests;
+
+import java.io.File;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+import org.testng.Reporter;
+import org.testng.annotations.Test;
+
+import com.acneuro.test.automation.db_connection_libraries.DBUtils;
+import com.acneuro.test.automation.db_connection_libraries.OracleJdbcConnection;
+import com.acneuro.test.automation.fileslibrary.FileTransferLibrary;
+import com.acneuro.test.automation.fileslibrary.FileUtilsLibrary;
+import com.acneuro.test.automation.libraries.Constant;
+import com.acneuro.test.automation.mvno_project_library.FranceProjectSpecific;
+import com.acneuro.test.automation.mvno_project_library.MVNOProjectSpecific;
+
+/*
+ * @Author: Sijimon James
+ * Test: FRMVNO-37:Direct Debit Activation for FR
+ */
+public class DirectDebitActivationForFranceAccount {
+	private static String country = "FR";
+	private static String customerNumber = "unknown";
+	private static String customerId = "unknown";
+	private static String ocxFileName = null;
+	private static String remoteDirectory = "/opt/applications/sepa-mandate-update-disemp/test/input/";
+
+	@Test
+	public void France_DD_Activation() {
+
+		try {
+			Reporter.log("TestLink Test: FRMVNO-37:Direct Debit Activation for FR");
+			System.out.println("TestLink Test: FRMVNO-37:Direct Debit Activation for FR");
+
+			// Create a new customer or
+			// Find a customer with Payment method CC active and DD pending
+
+			latestCustomerNumberFromCuesWithDirectDebitPending();
+
+			// Create a CSV file with
+			// --OCX_001_581953_CUST_<<yyyymmddhhmmss>>_25150845.csv
+			// with selected customer number and current date in it.
+
+			File myOCXfile = FileUtilsLibrary.csvFileForDirectDebitActivation(customerNumber, country);
+
+			String myFileWithDirectory = "file:/" + myOCXfile.getAbsolutePath();
+			ocxFileName = myFileWithDirectory.replace("\\", "/");
+
+			System.out.println("A csv file is created with name: " + ocxFileName);
+
+			// Send the file to remote location ams1-uatjob-02
+			// /opt/applications/sepa-mandate-update-disemp/test/input
+			System.out.println(String.format("File sending starts to remote machine %s directory %s",
+					Constant.DD_HOSTNAME, remoteDirectory));
+			System.out.println(remoteDirectory);
+			FileTransferLibrary.sftp(Constant.DD_HOSTNAME, remoteDirectory, ocxFileName);
+			Thread.sleep(2000);
+			System.err.println("File is sent successfully");
+			// Go to;
+			// http://ams1-uatjob-02:8080/sepa-mandate-update-disemp-web/?1
+			// Run the worker 'test FR UMR'
+			System.out.println("Opening the worker....");
+			FranceProjectSpecific.runWorkerForDDActivation();
+			System.out.println("The worker is triggered");
+						
+			// Check for the Action 'updateUMRAction' is finished in success
+//			MVNOProjectSpecific.checkIfActionExistsWithProcessId(processId, "updateUMRAction");
+			
+			// check for DD - should be active now.
+			// Fail the test if not
+
+			// Wild bill, should be active BS_PAYMENTS
+			System.out.println("DD is active in wild bill");
+			// May not be active in Cues, if not run DHC
+			System.out.println("DD is active in Cues");
+			// Test is success if DD is active is cues
+			System.out.println("France DD Activation test is successfully completed");
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void latestCustomerNumberFromCuesWithDirectDebitPending() {
+
+		try {
+			String queryCustID = DBUtils.queryCustomerIdWithDirectDebitPendingForFrance();
+			ResultSet getCustId = OracleJdbcConnection.crmDatabaseSelectQuery(queryCustID);
+
+			while (getCustId.next()) {
+
+				customerId = getCustId.getString("CUST_ID");
+			}
+
+			String queryCustomerNumber = DBUtils.queryCinProductsWithCustId(customerId);
+			ResultSet getCustomerNumber = OracleJdbcConnection.crmDatabaseSelectQuery(queryCustomerNumber);
+
+			while (getCustomerNumber.next()) {
+
+				customerNumber = getCustomerNumber.getString("CUSTOMER_NUMBER");
+				if (getCustomerNumber.wasNull()) {
+
+					System.err.println("No active customer found with DD pending, Activate a new customer");
+					throw new AssertionError();
+				}
+			}
+			System.out.println("Cusotmer found with CC active and DD pending");
+			System.out.println("Customer ID is: " + customerId);
+			System.out.println("Customer Number is: " + customerNumber);
+			Reporter.log("Customer Number: " + customerNumber);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+}
